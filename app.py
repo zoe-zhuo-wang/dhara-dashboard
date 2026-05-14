@@ -113,23 +113,27 @@ if uploaded_file:
         st.plotly_chart(fig_phase, use_container_width=True)
 
         left, right = st.columns(2)
-        type_budget = projects.groupby('Funding Type')['Budget Amount ($K)'].sum().reset_index()
-        fig_type = px.pie(
-            type_budget, values='Budget Amount ($K)', names='Funding Type',
-            title="Budget Distribution by Funding Type", hole=0.4,
-        )
-        fig_type.update_traces(
-            texttemplate='%{label}<br>%{percent}<br><b>$%{value:,.0f}K</b>',
-            textposition='outside', hovertemplate='<b>%{label}</b><br>$%{value:,.0f}K<br>%{percent}<extra></extra>',
-            pull=[0.02]*len(type_budget),
-            marker=dict(line=dict(width=2, color='white'))
-        )
-        fig_type.update_layout(
-            hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
-            font=dict(color='#4A6A8A'),
-            paper_bgcolor='rgba(255,255,255,0.3)',
-        )
-        left.plotly_chart(fig_type, use_container_width=True)
+        with left:
+            bs_opts = sorted(projects['Budget Status'].dropna().unique().tolist())
+            sel_bs = st.multiselect("Filter by Budget Status", bs_opts, default=bs_opts)
+            p_filtered = projects[projects['Budget Status'].isin(sel_bs)] if sel_bs else projects
+            type_budget = p_filtered.groupby('Funding Type')['Budget Amount ($K)'].sum().reset_index()
+            fig_type = px.pie(
+                type_budget, values='Budget Amount ($K)', names='Funding Type',
+                title="Budget Distribution by Funding Type", hole=0.4,
+            )
+            fig_type.update_traces(
+                texttemplate='%{label}<br>%{percent}<br><b>$%{value:,.0f}K</b>',
+                textposition='outside', hovertemplate='<b>%{label}</b><br>$%{value:,.0f}K<br>%{percent}<extra></extra>',
+                pull=[0.02]*len(type_budget),
+                marker=dict(line=dict(width=2, color='white'))
+            )
+            fig_type.update_layout(
+                hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
+                font=dict(color='#4A6A8A'),
+                paper_bgcolor='rgba(255,255,255,0.3)',
+            )
+            st.plotly_chart(fig_type, use_container_width=True)
 
         status_budget = projects.groupby('Budget Status')['Budget Amount ($K)'].sum().reset_index()
         fig_status = px.pie(
