@@ -55,8 +55,9 @@ PHASE_COLORS = {
 
 def _fmt_lines(text):
     import re
-    lines = re.split(r'[。]\s*|\.\s+', str(text))
-    return '<br>'.join(s.strip() for s in lines if s.strip())
+    s = re.sub(r'([。])\s*', r'\1<br>', str(text))
+    s = re.sub(r'(\.)\s+', r'\1<br>', s)
+    return s.strip()
 
 if uploaded_file:
     projects = pd.read_excel(uploaded_file, sheet_name="Projects")
