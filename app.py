@@ -112,10 +112,11 @@ if uploaded_file:
         )
         st.plotly_chart(fig_phase, use_container_width=True)
 
+        bs_opts = sorted(projects['Budget Status'].dropna().unique().tolist())
+        sel_bs = st.multiselect("Filter by Budget Status", bs_opts, default=bs_opts, label_visibility="collapsed")
+
         left, right = st.columns(2)
         with left:
-            bs_opts = sorted(projects['Budget Status'].dropna().unique().tolist())
-            sel_bs = st.multiselect("Filter by Budget Status", bs_opts, default=bs_opts)
             p_filtered = projects[projects['Budget Status'].isin(sel_bs)] if sel_bs else projects
             type_budget = p_filtered.groupby('Funding Type')['Budget Amount ($K)'].sum().reset_index()
             fig_type = px.pie(
