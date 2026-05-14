@@ -26,15 +26,26 @@ st.markdown("""
     div[data-testid="stExpander"] > div:first-child { border-radius: 12px 12px 0 0; }
     div[data-testid="metric-container"] {
         background: linear-gradient(145deg, #FFFFFF 0%, #F8FAFE 100%);
-        padding: 14px 18px; border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
-        border-left: 4px solid #1E3A5F;
+        padding: 16px 20px; border-radius: 14px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+        border: 1px solid rgba(30,58,95,0.08);
         position: relative; overflow: hidden;
+    }
+    div[data-testid="metric-container"]::before {
+        content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+        background: linear-gradient(180deg, #1E3A5F, #2A5080);
+        border-radius: 14px 0 0 14px;
     }
     div[data-testid="metric-container"]::after {
         content: ''; position: absolute; top: 0; left: 0; right: 0; height: 50%;
         background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, transparent 100%);
         pointer-events: none;
+    }
+    .chart-card {
+        background: white; border-radius: 14px; padding: 10px 14px 6px 14px;
+        margin: 14px 0;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+        border: 1px solid rgba(30,58,95,0.06);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -110,10 +121,13 @@ if uploaded_file:
             hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
             font=dict(color='#4A6A8A')
         )
+        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
         st.plotly_chart(fig_phase, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
         left, right = st.columns(2)
         with left:
+            st.markdown('<div class="chart-card">', unsafe_allow_html=True)
             st.markdown(
                 '<div style="font-size:1rem;font-weight:700;color:#1E3A5F;text-align:center;'
                 'margin-bottom:4px;">Budget Distribution by Funding Type</div>',
@@ -140,11 +154,13 @@ if uploaded_file:
                 paper_bgcolor='rgba(255,255,255,0.3)',
             )
             st.plotly_chart(fig_type, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
         with right:
+            st.markdown('<div class="chart-card">', unsafe_allow_html=True)
             st.markdown(
                 '<div style="font-size:1rem;font-weight:700;color:#1E3A5F;text-align:center;'
-                'margin-bottom:4px;">Budget Distribution by Status</div>',
+                'margin-bottom:4px;">Budget Distribution by Budget Status</div>',
                 unsafe_allow_html=True
             )
             st.markdown('<div style="height:68px;"></div>', unsafe_allow_html=True)
@@ -166,6 +182,7 @@ if uploaded_file:
                 paper_bgcolor='rgba(255,255,255,0.3)',
             )
             st.plotly_chart(fig_status, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
         with st.expander("Project Details"):
             pf = projects.copy()
