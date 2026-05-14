@@ -79,16 +79,24 @@ if uploaded_file:
             color='Current Phase', color_discrete_sequence=colors,
             text='Count'
         )
-        fig_phase.update_traces(textposition='outside', cliponaxis=False)
+        fig_phase.update_traces(
+            textposition='outside', cliponaxis=False,
+            marker=dict(line=dict(width=1, color='rgba(0,0,0,0.12)'))
+        )
         fig_phase.update_layout(
             showlegend=False,
             yaxis={'categoryorder': 'total ascending', 'title': None},
             xaxis={
                 'range': [0, 50], 'dtick': 5,
-                'gridcolor': '#E0E0E0', 'gridwidth': 1,
-                'title': None, 'showline': True, 'linecolor': '#D0D0D0'
+                'gridcolor': '#D0D8E0', 'gridwidth': 1,
+                'title': None, 'showline': True, 'linecolor': '#B0B8C0',
+                'zeroline': True, 'zerolinecolor': '#C0C8D0', 'zerolinewidth': 1.5
             },
-            plot_bgcolor='white', margin=dict(t=40, r=40, b=20, l=10)
+            plot_bgcolor='rgba(245,247,250,0.6)',
+            paper_bgcolor='rgba(255,255,255,0.5)',
+            margin=dict(t=40, r=40, b=20, l=10),
+            hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
+            font=dict(color='#4A6A8A')
         )
         st.plotly_chart(fig_phase, use_container_width=True)
 
@@ -96,26 +104,40 @@ if uploaded_file:
         type_budget = projects.groupby('Funding Type')['Budget Amount ($K)'].sum().reset_index()
         fig_type = px.pie(
             type_budget, values='Budget Amount ($K)', names='Funding Type',
-            title="Budget by Funding Type", hole=0.4,
+            title="Budget Distribution by Funding Type", hole=0.4,
         )
         fig_type.update_traces(
             texttemplate='%{label}<br>%{percent}<br><b>$%{value:,.0f}K</b>',
-            textposition='outside', hovertemplate='<b>%{label}</b><br>$%{value:,.0f}K<br>%{percent}<extra></extra>'
+            textposition='outside', hovertemplate='<b>%{label}</b><br>$%{value:,.0f}K<br>%{percent}<extra></extra>',
+            pull=[0.02]*len(type_budget),
+            marker=dict(line=dict(width=2, color='white'))
+        )
+        fig_type.update_layout(
+            hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
+            font=dict(color='#4A6A8A'),
+            paper_bgcolor='rgba(255,255,255,0.3)',
         )
         left.plotly_chart(fig_type, use_container_width=True)
 
         status_budget = projects.groupby('Budget Status')['Budget Amount ($K)'].sum().reset_index()
         fig_status = px.pie(
             status_budget, values='Budget Amount ($K)', names='Budget Status',
-            title="Budget by Status", hole=0.4,
+            title="Budget Distribution by Status", hole=0.4,
         )
         fig_status.update_traces(
             texttemplate='%{label}<br>%{percent}<br><b>$%{value:,.0f}K</b>',
-            textposition='outside', hovertemplate='<b>%{label}</b><br>$%{value:,.0f}K<br>%{percent}<extra></extra>'
+            textposition='outside', hovertemplate='<b>%{label}</b><br>$%{value:,.0f}K<br>%{percent}<extra></extra>',
+            pull=[0.02]*len(status_budget),
+            marker=dict(line=dict(width=2, color='white'))
+        )
+        fig_status.update_layout(
+            hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
+            font=dict(color='#4A6A8A'),
+            paper_bgcolor='rgba(255,255,255,0.3)',
         )
         right.plotly_chart(fig_status, use_container_width=True)
 
-        with st.expander("Projects Details"):
+        with st.expander("Project Details"):
             pf = projects.copy()
             avail = [c for c in FILTER_COLS_PROJ if c in pf.columns]
             if avail:
@@ -127,7 +149,7 @@ if uploaded_file:
                         pf = pf[pf[c] == sel]
             st.dataframe(pf, use_container_width=True, hide_index=True)
 
-        with st.expander("Tasks Details"):
+        with st.expander("Task Details"):
             tf = tasks.copy()
             avail = [c for c in FILTER_COLS_TASK if c in tf.columns]
             if avail:
