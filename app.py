@@ -163,7 +163,8 @@ if uploaded_file:
             fig_type.update_layout(
                 hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
                 font=dict(color='#4A6A8A'),
-                paper_bgcolor='white',
+                paper_bgcolor='white', height=400,
+                margin=dict(t=20, b=20, l=20, r=20),
             )
             st.plotly_chart(fig_type, use_container_width=True)
 
@@ -189,7 +190,8 @@ if uploaded_file:
             fig_status.update_layout(
                 hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
                 font=dict(color='#4A6A8A'),
-                paper_bgcolor='white',
+                paper_bgcolor='white', height=400,
+                margin=dict(t=20, b=20, l=20, r=20),
             )
             st.plotly_chart(fig_status, use_container_width=True)
 
