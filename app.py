@@ -112,16 +112,20 @@ if uploaded_file:
         )
         st.plotly_chart(fig_phase, use_container_width=True)
 
-        bs_opts = sorted(projects['Budget Status'].dropna().unique().tolist())
-        sel_bs = st.multiselect("Filter by Budget Status", bs_opts, default=bs_opts, label_visibility="collapsed")
-
         left, right = st.columns(2)
         with left:
+            st.markdown(
+                '<div style="font-size:1rem;font-weight:700;color:#1E3A5F;text-align:center;'
+                'margin-bottom:4px;">Budget Distribution by Funding Type</div>',
+                unsafe_allow_html=True
+            )
+            bs_opts = sorted(projects['Budget Status'].dropna().unique().tolist())
+            sel_bs = st.multiselect("Filter by Budget Status", bs_opts, default=bs_opts)
             p_filtered = projects[projects['Budget Status'].isin(sel_bs)] if sel_bs else projects
             type_budget = p_filtered.groupby('Funding Type')['Budget Amount ($K)'].sum().reset_index()
             fig_type = px.pie(
                 type_budget, values='Budget Amount ($K)', names='Funding Type',
-                title="Budget Distribution by Funding Type", hole=0.4,
+                title=None, hole=0.4,
                 color_discrete_sequence=px.colors.qualitative.Set2,
             )
             fig_type.update_traces(
@@ -137,24 +141,31 @@ if uploaded_file:
             )
             st.plotly_chart(fig_type, use_container_width=True)
 
-        status_budget = projects.groupby('Budget Status')['Budget Amount ($K)'].sum().reset_index()
-        fig_status = px.pie(
-            status_budget, values='Budget Amount ($K)', names='Budget Status',
-            title="Budget Distribution by Status", hole=0.4,
-            color_discrete_sequence=px.colors.qualitative.Set1,
-        )
-        fig_status.update_traces(
-            texttemplate='%{label}<br>%{percent}<br><b>$%{value:,.0f}K</b>',
-            textposition='outside', hovertemplate='<b>%{label}</b><br>$%{value:,.0f}K<br>%{percent}<extra></extra>',
-            pull=[0.02]*len(status_budget),
-            marker=dict(line=dict(width=2, color='white'))
-        )
-        fig_status.update_layout(
-            hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
-            font=dict(color='#4A6A8A'),
-            paper_bgcolor='rgba(255,255,255,0.3)',
-        )
-        right.plotly_chart(fig_status, use_container_width=True)
+        with right:
+            st.markdown(
+                '<div style="font-size:1rem;font-weight:700;color:#1E3A5F;text-align:center;'
+                'margin-bottom:4px;">Budget Distribution by Status</div>',
+                unsafe_allow_html=True
+            )
+            st.markdown('<div style="height:68px;"></div>', unsafe_allow_html=True)
+            status_budget = projects.groupby('Budget Status')['Budget Amount ($K)'].sum().reset_index()
+            fig_status = px.pie(
+                status_budget, values='Budget Amount ($K)', names='Budget Status',
+                title=None, hole=0.4,
+                color_discrete_sequence=px.colors.qualitative.Set1,
+            )
+            fig_status.update_traces(
+                texttemplate='%{label}<br>%{percent}<br><b>$%{value:,.0f}K</b>',
+                textposition='outside', hovertemplate='<b>%{label}</b><br>$%{value:,.0f}K<br>%{percent}<extra></extra>',
+                pull=[0.02]*len(status_budget),
+                marker=dict(line=dict(width=2, color='white'))
+            )
+            fig_status.update_layout(
+                hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
+                font=dict(color='#4A6A8A'),
+                paper_bgcolor='rgba(255,255,255,0.3)',
+            )
+            st.plotly_chart(fig_status, use_container_width=True)
 
         with st.expander("Project Details"):
             pf = projects.copy()
