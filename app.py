@@ -174,7 +174,7 @@ if uploaded_file:
                 'margin-bottom:4px;">Budget Distribution by Budget Status</div>',
                 unsafe_allow_html=True
             )
-            st.markdown('<div style="height:86px;"></div>', unsafe_allow_html=True)
+            st.markdown('<div style="height:80px;"></div>', unsafe_allow_html=True)
             status_budget = projects.groupby('Budget Status')['Budget Amount ($K)'].sum().reset_index()
             fig_status = px.pie(
                 status_budget, values='Budget Amount ($K)', names='Budget Status',
