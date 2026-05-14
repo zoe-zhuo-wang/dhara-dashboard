@@ -53,6 +53,11 @@ PHASE_COLORS = {
     'UAT': '#FDC086',
 }
 
+def _fmt_lines(text):
+    import re
+    lines = re.split(r'[。]\s*|\.\s+', str(text))
+    return '<br>'.join(s.strip() for s in lines if s.strip())
+
 if uploaded_file:
     projects = pd.read_excel(uploaded_file, sheet_name="Projects")
     tasks = pd.read_excel(uploaded_file, sheet_name="Tasks")
@@ -305,9 +310,9 @@ if uploaded_file:
                     f'{pname}{phase_badge}</div>'
                     f'<div style="display:flex;gap:20px;">'
                     f'<div style="flex:1;"><div style="font-size:0.75rem;font-weight:700;color:#1565C0;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Objectives</div>'
-                    f'<div style="font-size:0.88rem;color:#333;line-height:1.5;">{obj or "<span style=color:#AAA;font-style:italic;>No objectives recorded</span>"}</div></div>'
+                    f'<div style="font-size:0.88rem;color:#333;line-height:1.6;">{_fmt_lines(obj) or "<span style=color:#AAA;font-style:italic;>No objectives recorded</span>"}</div></div>'
                     f'<div style="flex:1;"><div style="font-size:0.75rem;font-weight:700;color:#E65100;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Key Updates</div>'
-                    f'<div style="font-size:0.88rem;color:#333;line-height:1.5;">{updates or "<span style=color:#AAA;font-style:italic;>No updates recorded</span>"}</div></div>'
+                    f'<div style="font-size:0.88rem;color:#333;line-height:1.6;">{_fmt_lines(updates) or "<span style=color:#AAA;font-style:italic;>No updates recorded</span>"}</div></div>'
                     f'</div></div>',
                     unsafe_allow_html=True
                 )
