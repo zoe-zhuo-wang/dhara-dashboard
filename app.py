@@ -47,6 +47,12 @@ FILTER_COLS_PROJ = ['Funding Type', 'AI Project or Not', 'DT Owner', 'Current Ph
                      'Budget Status', 'Vetra Adopted or Not', 'Overall Status']
 FILTER_COLS_TASK = ['Linked Project', 'Assignee', 'Priority', 'Progress']
 
+PHASE_COLORS = {
+    'DEV': '#7FC97F',
+    'Budget Application': '#BEAED4',
+    'UAT': '#FDC086',
+}
+
 if uploaded_file:
     projects = pd.read_excel(uploaded_file, sheet_name="Projects")
     tasks = pd.read_excel(uploaded_file, sheet_name="Tasks")
@@ -283,8 +289,9 @@ if uploaded_file:
                 updates = '' if (isinstance(upd_val, float) and pd.isna(upd_val)) else str(upd_val or '')
                 linked = tasks[tasks['Linked Project'] == pname]
 
+                phase_color = PHASE_COLORS.get(phase, '#1E3A5F')
                 phase_badge = (
-                    f'<span style="display:inline-block;background:#1E3A5F;color:white;'
+                    f'<span style="display:inline-block;background:{phase_color};color:white;'
                     f'border-radius:10px;padding:0 10px;font-size:0.7rem;font-weight:600;'
                     f'margin-left:8px;">{phase}</span>'
                 ) if phase else ''
