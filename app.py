@@ -106,9 +106,14 @@ if uploaded_file:
         phase_counts = projects['Current Phase'].value_counts().reset_index()
         phase_counts.columns = ['Current Phase', 'Count']
         colors = px.colors.qualitative.Bold + px.colors.qualitative.Set2
+        st.markdown(
+            '<div style="font-size:1rem;font-weight:700;color:#1E3A5F;text-align:center;'
+            'margin-bottom:4px;">Project Status Overview</div>',
+            unsafe_allow_html=True
+        )
         fig_phase = px.bar(
             phase_counts, y='Current Phase', x='Count',
-            orientation='h', title="Project Status Overview",
+            orientation='h', title=None,
             color='Current Phase', color_discrete_sequence=colors,
             text='Count'
         )
