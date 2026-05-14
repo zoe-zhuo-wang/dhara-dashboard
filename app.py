@@ -111,7 +111,8 @@ if uploaded_file:
         colors = px.colors.qualitative.Bold + px.colors.qualitative.Set2
         fig_phase = px.bar(
             phase_counts, y='Current Phase', x='Count',
-            orientation='h', title=None,
+            orientation='h',
+            title=dict(text="Project Status Overview", font=dict(size=16, color='#1E3A5F'), x=0.5, xanchor='center'),
             color='Current Phase', color_discrete_sequence=colors,
             text='Count'
         )
@@ -120,7 +121,6 @@ if uploaded_file:
             marker=dict(line=dict(width=1, color='rgba(0,0,0,0.12)'))
         )
         fig_phase.update_layout(
-            title=dict(text="Project Status Overview", font=dict(size=16, color='#1E3A5F'), x=0.5, xanchor='center'),
             showlegend=False,
             yaxis={'categoryorder': 'total ascending', 'title': None},
             xaxis={
@@ -146,7 +146,8 @@ if uploaded_file:
             type_budget = p_filtered.groupby('Funding Type')['Budget Amount ($K)'].sum().reset_index()
             fig_type = px.pie(
                 type_budget, values='Budget Amount ($K)', names='Funding Type',
-                title=None, hole=0.4,
+                title=dict(text="Budget Distribution by Funding Type", font=dict(size=16, color='#1E3A5F'), x=0.5, xanchor='center'),
+                hole=0.4,
                 color_discrete_sequence=px.colors.qualitative.Set2,
             )
             fig_type.update_traces(
@@ -156,7 +157,6 @@ if uploaded_file:
                 marker=dict(line=dict(width=2, color='white'))
             )
             fig_type.update_layout(
-                title=dict(text="Budget Distribution by Funding Type", font=dict(size=16, color='#1E3A5F'), x=0.5, xanchor='center'),
                 hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
                 font=dict(color='#4A6A8A'),
                 paper_bgcolor='white', height=420,
@@ -168,7 +168,8 @@ if uploaded_file:
             status_budget = projects.groupby('Budget Status')['Budget Amount ($K)'].sum().reset_index()
             fig_status = px.pie(
                 status_budget, values='Budget Amount ($K)', names='Budget Status',
-                title=None, hole=0.4,
+                title=dict(text="Budget Distribution by Budget Status", font=dict(size=16, color='#1E3A5F'), x=0.5, xanchor='center'),
+                hole=0.4,
                 color_discrete_sequence=px.colors.qualitative.Set1,
             )
             fig_status.update_traces(
@@ -178,7 +179,6 @@ if uploaded_file:
                 marker=dict(line=dict(width=2, color='white'))
             )
             fig_status.update_layout(
-                title=dict(text="Budget Distribution by Budget Status", font=dict(size=16, color='#1E3A5F'), x=0.5, xanchor='center'),
                 hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
                 font=dict(color='#4A6A8A'),
                 paper_bgcolor='white', height=420,
