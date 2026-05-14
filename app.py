@@ -163,8 +163,7 @@ if uploaded_file:
             fig_type.update_layout(
                 hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
                 font=dict(color='#4A6A8A'),
-                paper_bgcolor='white', height=400,
-                margin=dict(t=20, b=20, l=20, r=20),
+                paper_bgcolor='white', height=420, automargin=True,
             )
             st.plotly_chart(fig_type, use_container_width=True)
 
@@ -174,7 +173,7 @@ if uploaded_file:
                 'margin-bottom:4px;">Budget Distribution by Budget Status</div>',
                 unsafe_allow_html=True
             )
-            st.markdown('<div style="height:74px;"></div>', unsafe_allow_html=True)
+            st.markdown('<div style="height:82px;"></div>', unsafe_allow_html=True)
             status_budget = projects.groupby('Budget Status')['Budget Amount ($K)'].sum().reset_index()
             fig_status = px.pie(
                 status_budget, values='Budget Amount ($K)', names='Budget Status',
@@ -190,8 +189,7 @@ if uploaded_file:
             fig_status.update_layout(
                 hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
                 font=dict(color='#4A6A8A'),
-                paper_bgcolor='white', height=400,
-                margin=dict(t=20, b=20, l=20, r=20),
+                paper_bgcolor='white', height=420, automargin=True,
             )
             st.plotly_chart(fig_status, use_container_width=True)
 
