@@ -121,6 +121,7 @@ if uploaded_file:
             fig_type = px.pie(
                 type_budget, values='Budget Amount ($K)', names='Funding Type',
                 title="Budget Distribution by Funding Type", hole=0.4,
+                color_discrete_sequence=px.colors.qualitative.Set2,
             )
             fig_type.update_traces(
                 texttemplate='%{label}<br>%{percent}<br><b>$%{value:,.0f}K</b>',
@@ -139,6 +140,7 @@ if uploaded_file:
         fig_status = px.pie(
             status_budget, values='Budget Amount ($K)', names='Budget Status',
             title="Budget Distribution by Status", hole=0.4,
+            color_discrete_sequence=px.colors.qualitative.Set1,
         )
         fig_status.update_traces(
             texttemplate='%{label}<br>%{percent}<br><b>$%{value:,.0f}K</b>',
