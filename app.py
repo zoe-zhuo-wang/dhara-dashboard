@@ -162,75 +162,77 @@ if uploaded_file:
             st.dataframe(tf, use_container_width=True, hide_index=True)
 
     with tab2:
-        for _, m in members.iterrows():
-            name = m['Name']
-            team = m['Team']
+        for team_name, team_members in members.groupby('Team'):
+            st.markdown(
+                f'<div style="font-size:1.1rem;font-weight:700;color:#1E3A5F;'
+                f'margin:20px 0 12px 0;padding:10px 16px;border-radius:10px;'
+                f'background:linear-gradient(135deg,#E8EDF3,#DDE4EC);'
+                f'box-shadow:inset 0 1px 0 rgba(255,255,255,0.6),0 2px 6px rgba(0,0,0,0.04);">'
+                f'👥 {team_name}  ·  {len(team_members)} members</div>',
+                unsafe_allow_html=True
+            )
 
-            projs = projects[projects['DT Owner'] == name]['Project Name'].tolist()
-            tks = tasks[tasks['Assignee'] == name]['Task'].tolist()
+            for _, m in team_members.iterrows():
+                name = m['Name']
+                projs = projects[projects['DT Owner'] == name]['Project Name'].tolist()
+                tks = tasks[tasks['Assignee'] == name]['Task'].tolist()
 
-            mc1, mc2 = st.columns([1, 3])
-            with mc1:
-                st.markdown(
-                    f'<div style="display:flex;align-items:center;gap:12px;'
-                    f'background:linear-gradient(145deg,#FFFFFF,#F5F7FA);'
-                    f'padding:12px 16px;border-radius:12px;'
-                    f'box-shadow:0 4px 12px rgba(0,0,0,0.05),inset 0 1px 0 rgba(255,255,255,0.8);">'
-                    f'<div style="width:50px;height:50px;border-radius:50%;background:linear-gradient(145deg,#1E3A5F,#2A5080);color:white;'
-                    f'display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.3rem;flex-shrink:0;'
-                    f'box-shadow:0 3px 8px rgba(30,58,95,0.3),inset 0 1px 0 rgba(255,255,255,0.15);'
-                    f'text-shadow:0 1px 2px rgba(0,0,0,0.2);">'
-                    f'{name[0].upper()}</div>'
-                    f'<div><div style="font-size:1.15rem;font-weight:600;color:#1E3A5F;">{name}</div>'
-                    f'<span style="display:inline-block;background:linear-gradient(145deg,#E8EDF3,#DDE4EC);color:#4A6A8A;padding:2px 14px;'
-                    f'border-radius:20px;font-size:0.75rem;font-weight:600;box-shadow:inset 0 1px 0 rgba(255,255,255,0.6),0 1px 2px rgba(0,0,0,0.05);">{team}</span></div></div>',
-                    unsafe_allow_html=True
-                )
-
-            with mc2:
-                cc1, cc2 = st.columns(2)
-                with cc1:
-                    badge = (f'<span style="display:inline-block;background:linear-gradient(145deg,#1565C0,#1976D2);color:white;'
-                             f'border-radius:12px;padding:0 10px;font-size:0.7rem;font-weight:700;'
-                             f'margin-left:8px;box-shadow:0 2px 4px rgba(21,101,192,0.3);'
-                             f'text-shadow:0 1px 1px rgba(0,0,0,0.15);">{len(projs)}</span>') if projs else ''
-                    items = "".join(
-                        f'<div style="background:linear-gradient(135deg,#E3F2FD,#D6E8FA);padding:5px 10px;border-radius:6px;'
-                        f'margin:3px 0;font-size:0.85rem;color:#1E3A5F;'
-                        f'box-shadow:inset 0 1px 0 rgba(255,255,255,0.5),0 1px 2px rgba(0,0,0,0.04);">{p}</div>'
-                        for p in projs
-                    ) or '<div style="color:#AAA;font-style:italic;font-size:0.85rem;">No Projects</div>'
+                mc1, mc2 = st.columns([1, 3])
+                with mc1:
                     st.markdown(
-                        f'<div style="background:linear-gradient(145deg,#F0F6FF,#E4EEFA);border:1px solid #C8D8EC;border-radius:12px;'
-                        f'padding:14px;height:100%;'
-                        f'box-shadow:0 4px 12px rgba(0,0,0,0.05),inset 0 1px 0 rgba(255,255,255,0.7);">'
-                        f'<div style="font-size:0.8rem;font-weight:700;color:#1565C0;text-transform:uppercase;'
-                        f'letter-spacing:0.5px;margin-bottom:8px;border-bottom:2px solid #1565C0;padding-bottom:6px;'
-                        f'text-shadow:0 1px 0 rgba(255,255,255,0.5);">'
-                        f'PROJECTS{badge}</div>{items}</div>',
+                        f'<div style="display:flex;align-items:center;gap:10px;padding:6px 8px;">'
+                        f'<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(145deg,#1E3A5F,#2A5080);color:white;'
+                        f'display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;flex-shrink:0;'
+                        f'box-shadow:0 2px 6px rgba(30,58,95,0.25),inset 0 1px 0 rgba(255,255,255,0.15);">'
+                        f'{name[0].upper()}</div>'
+                        f'<div style="font-size:0.95rem;font-weight:600;color:#1E3A5F;">{name}</div></div>',
                         unsafe_allow_html=True
                     )
-                with cc2:
-                    badge = (f'<span style="display:inline-block;background:linear-gradient(145deg,#E65100,#F57C00);color:white;'
-                             f'border-radius:12px;padding:0 10px;font-size:0.7rem;font-weight:700;'
-                             f'margin-left:8px;box-shadow:0 2px 4px rgba(230,81,0,0.3);'
-                             f'text-shadow:0 1px 1px rgba(0,0,0,0.15);">{len(tks)}</span>') if tks else ''
-                    items = "".join(
-                        f'<div style="background:linear-gradient(135deg,#FFF3E0,#FDE8D0);padding:5px 10px;border-radius:6px;'
-                        f'margin:3px 0;font-size:0.85rem;color:#A04000;'
-                        f'box-shadow:inset 0 1px 0 rgba(255,255,255,0.5),0 1px 2px rgba(0,0,0,0.04);">{t}</div>'
-                        for t in tks
-                    ) or '<div style="color:#AAA;font-style:italic;font-size:0.85rem;">No Tasks</div>'
-                    st.markdown(
-                        f'<div style="background:linear-gradient(145deg,#FFF8F0,#FEF0E0);border:1px solid #E8D0B8;border-radius:12px;'
-                        f'padding:14px;height:100%;'
-                        f'box-shadow:0 4px 12px rgba(0,0,0,0.05),inset 0 1px 0 rgba(255,255,255,0.7);">'
-                        f'<div style="font-size:0.8rem;font-weight:700;color:#E65100;text-transform:uppercase;'
-                        f'letter-spacing:0.5px;margin-bottom:8px;border-bottom:2px solid #E65100;padding-bottom:6px;'
-                        f'text-shadow:0 1px 0 rgba(255,255,255,0.5);">'
-                        f'TASKS{badge}</div>{items}</div>',
-                        unsafe_allow_html=True
-                    )
+
+                with mc2:
+                    cc1, cc2 = st.columns(2)
+                    with cc1:
+                        badge = (f'<span style="display:inline-block;background:linear-gradient(145deg,#1565C0,#1976D2);color:white;'
+                                 f'border-radius:12px;padding:0 10px;font-size:0.7rem;font-weight:700;'
+                                 f'margin-left:8px;box-shadow:0 2px 4px rgba(21,101,192,0.3);'
+                                 f'text-shadow:0 1px 1px rgba(0,0,0,0.15);">{len(projs)}</span>') if projs else ''
+                        items = "".join(
+                            f'<div style="background:linear-gradient(135deg,#E3F2FD,#D6E8FA);padding:4px 10px;border-radius:6px;'
+                            f'margin:2px 0;font-size:0.82rem;color:#1E3A5F;'
+                            f'box-shadow:inset 0 1px 0 rgba(255,255,255,0.5),0 1px 2px rgba(0,0,0,0.04);">{p}</div>'
+                            for p in projs
+                        ) or '<div style="color:#AAA;font-style:italic;font-size:0.82rem;">No Projects</div>'
+                        st.markdown(
+                            f'<div style="background:linear-gradient(145deg,#F0F6FF,#E4EEFA);border:1px solid #C8D8EC;border-radius:10px;'
+                            f'padding:10px;height:100%;'
+                            f'box-shadow:0 4px 12px rgba(0,0,0,0.05),inset 0 1px 0 rgba(255,255,255,0.7);">'
+                            f'<div style="font-size:0.78rem;font-weight:700;color:#1565C0;text-transform:uppercase;'
+                            f'letter-spacing:0.5px;margin-bottom:6px;border-bottom:2px solid #1565C0;padding-bottom:4px;'
+                            f'text-shadow:0 1px 0 rgba(255,255,255,0.5);">'
+                            f'PROJECTS{badge}</div>{items}</div>',
+                            unsafe_allow_html=True
+                        )
+                    with cc2:
+                        badge = (f'<span style="display:inline-block;background:linear-gradient(145deg,#E65100,#F57C00);color:white;'
+                                 f'border-radius:12px;padding:0 10px;font-size:0.7rem;font-weight:700;'
+                                 f'margin-left:8px;box-shadow:0 2px 4px rgba(230,81,0,0.3);'
+                                 f'text-shadow:0 1px 1px rgba(0,0,0,0.15);">{len(tks)}</span>') if tks else ''
+                        items = "".join(
+                            f'<div style="background:linear-gradient(135deg,#FFF3E0,#FDE8D0);padding:4px 10px;border-radius:6px;'
+                            f'margin:2px 0;font-size:0.82rem;color:#A04000;'
+                            f'box-shadow:inset 0 1px 0 rgba(255,255,255,0.5),0 1px 2px rgba(0,0,0,0.04);">{t}</div>'
+                            for t in tks
+                        ) or '<div style="color:#AAA;font-style:italic;font-size:0.82rem;">No Tasks</div>'
+                        st.markdown(
+                            f'<div style="background:linear-gradient(145deg,#FFF8F0,#FEF0E0);border:1px solid #E8D0B8;border-radius:10px;'
+                            f'padding:10px;height:100%;'
+                            f'box-shadow:0 4px 12px rgba(0,0,0,0.05),inset 0 1px 0 rgba(255,255,255,0.7);">'
+                            f'<div style="font-size:0.78rem;font-weight:700;color:#E65100;text-transform:uppercase;'
+                            f'letter-spacing:0.5px;margin-bottom:6px;border-bottom:2px solid #E65100;padding-bottom:4px;'
+                            f'text-shadow:0 1px 0 rgba(255,255,255,0.5);">'
+                            f'TASKS{badge}</div>{items}</div>',
+                            unsafe_allow_html=True
+                        )
 
 else:
     st.info("Upload Excel file to get started")
