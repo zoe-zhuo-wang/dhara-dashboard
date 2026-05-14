@@ -1,3 +1,61 @@
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Windows user dir junk
+AppData/
+Application Data/
+Cookies/
+Local Settings/
+My Documents/
+NetHood/
+PrintHood/
+Recent/
+SendTo/
+Templates/
+「开始」菜单/
+Contacts/
+Desktop/
+Documents/
+Downloads/
+Favorites/
+Links/
+Music/
+OneDrive*/
+Saved Games/
+Searches/
+Videos/
+WPS*/
+Lenovo/
+ntuser.*
+desktop.ini
+
+# Node
+node_modules/
+package-lock.json
+package.json
+
+# Config dirs
+.agents/
+.bun/
+.cache/
+.cisco/
+.claude/
+.config/
+.docker/
+.local/
+.modelscope/
+.npm/
+.npmrc/
+.ollama/
+.vscode/
+.EasyOCR/
+.nodemid
+~/
+
+# Project-specific junk
+project-management/
+output/
+multi-file-to-bpmn/
+unpacked_handover/
+WeChatProjects/
