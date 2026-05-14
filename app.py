@@ -159,7 +159,7 @@ if uploaded_file:
             fig_type.update_traces(
                 texttemplate='%{label}<br>%{percent}<br><b>$%{value:,.0f}K</b>',
                 textposition='outside', hovertemplate='<b>%{label}</b><br>$%{value:,.0f}K<br>%{percent}<extra></extra>',
-                pull=[0.08]*len(type_budget),
+                pull=[0.02]*len(type_budget),
                 marker=dict(line=dict(width=2, color='white'))
             )
             fig_type.update_layout(
@@ -187,7 +187,7 @@ if uploaded_file:
             fig_status.update_traces(
                 texttemplate='%{label}<br>%{percent}<br><b>$%{value:,.0f}K</b>',
                 textposition='outside', hovertemplate='<b>%{label}</b><br>$%{value:,.0f}K<br>%{percent}<extra></extra>',
-                pull=[0.08]*len(status_budget),
+                pull=[0.02]*len(status_budget),
                 marker=dict(line=dict(width=2, color='white'))
             )
             fig_status.update_layout(
