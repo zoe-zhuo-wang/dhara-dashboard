@@ -47,6 +47,10 @@ st.markdown("""
         font-size: 1.6rem !important; font-weight: 700 !important;
         color: #1E3A5F !important; letter-spacing: 0.3px;
     }
+    div[data-testid="stPlotlyChart"] {
+        border-radius: 14px;
+        box-shadow: 0 0 0 1px rgba(30,58,95,0.06), 0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04);
+    }
     div[data-testid="stMetricLabel"] {
         font-size: 0.75rem !important; font-weight: 500 !important;
         color: #7A9AB5 !important; letter-spacing: 0.8px;
@@ -122,7 +126,7 @@ if uploaded_file:
                 'zeroline': True, 'zerolinecolor': '#C0C8D0', 'zerolinewidth': 1.5
             },
             plot_bgcolor='rgba(245,247,250,0.6)',
-            paper_bgcolor='rgba(255,255,255,0.5)',
+            paper_bgcolor='white',
             margin=dict(t=40, r=40, b=20, l=10),
             hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
             font=dict(color='#4A6A8A')
@@ -154,7 +158,7 @@ if uploaded_file:
             fig_type.update_layout(
                 hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
                 font=dict(color='#4A6A8A'),
-                paper_bgcolor='rgba(255,255,255,0.3)',
+                paper_bgcolor='white',
             )
             st.plotly_chart(fig_type, use_container_width=True)
 
@@ -180,7 +184,7 @@ if uploaded_file:
             fig_status.update_layout(
                 hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
                 font=dict(color='#4A6A8A'),
-                paper_bgcolor='rgba(255,255,255,0.3)',
+                paper_bgcolor='white',
             )
             st.plotly_chart(fig_status, use_container_width=True)
 
