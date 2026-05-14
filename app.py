@@ -159,8 +159,9 @@ if uploaded_file:
             fig_type.update_traces(
                 texttemplate='%{label}<br>%{percent}<br><b>$%{value:,.0f}K</b>',
                 textposition='outside', hovertemplate='<b>%{label}</b><br>$%{value:,.0f}K<br>%{percent}<extra></extra>',
-                pull=[0.02]*len(type_budget),
-                marker=dict(line=dict(width=2, color='white'))
+                pull=[0.08]*len(type_budget),
+                marker=dict(line=dict(width=2, color='white')),
+                connector=dict(line=dict(color='#1E3A5F', width=2))
             )
             fig_type.update_layout(
                 hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
@@ -187,8 +188,9 @@ if uploaded_file:
             fig_status.update_traces(
                 texttemplate='%{label}<br>%{percent}<br><b>$%{value:,.0f}K</b>',
                 textposition='outside', hovertemplate='<b>%{label}</b><br>$%{value:,.0f}K<br>%{percent}<extra></extra>',
-                pull=[0.02]*len(status_budget),
-                marker=dict(line=dict(width=2, color='white'))
+                pull=[0.08]*len(status_budget),
+                marker=dict(line=dict(width=2, color='white')),
+                connector=dict(line=dict(color='#1E3A5F', width=2))
             )
             fig_status.update_layout(
                 hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
