@@ -318,54 +318,46 @@ if uploaded_file:
 
         for owner in sorted(pf['DT Owner'].unique()):
             owner_projs = pf[pf['DT Owner'] == owner]
-            st.markdown(
-                f'<div style="font-size:1.05rem;font-weight:700;color:#1E3A5F;'
-                f'margin:24px 0 12px 0;padding:8px 14px;border-radius:8px;'
-                f'background:linear-gradient(135deg,#E8EDF3,#DDE4EC);'
-                f'box-shadow:inset 0 1px 0 rgba(255,255,255,0.6),0 2px 6px rgba(0,0,0,0.04);">'
-                f'👤 {owner}  ·  {len(owner_projs)} projects</div>',
-                unsafe_allow_html=True
-            )
+            with st.expander(f"👤 {owner}  ·  {len(owner_projs)} projects", expanded=True):
+                for _, proj in owner_projs.iterrows():
+                    pname = proj['Project Name']
+                    phase = proj.get('Current Phase', '')
+                    obj_val = proj.get('Objectives', '')
+                    obj = '' if (isinstance(obj_val, float) and pd.isna(obj_val)) else str(obj_val or '')
+                    upd_val = proj.get('Key Updates', '')
+                    updates = '' if (isinstance(upd_val, float) and pd.isna(upd_val)) else str(upd_val or '')
+                    linked = tasks[tasks['Linked Project'] == pname]
 
-            for _, proj in owner_projs.iterrows():
-                pname = proj['Project Name']
-                phase = proj.get('Current Phase', '')
-                obj_val = proj.get('Objectives', '')
-                obj = '' if (isinstance(obj_val, float) and pd.isna(obj_val)) else str(obj_val or '')
-                upd_val = proj.get('Key Updates', '')
-                updates = '' if (isinstance(upd_val, float) and pd.isna(upd_val)) else str(upd_val or '')
-                linked = tasks[tasks['Linked Project'] == pname]
+                    phase_color = PHASE_COLORS.get(phase, '#1E3A5F')
+                    phase_badge = (
+                        f'<span style="display:inline-block;background:{phase_color};color:white;'
+                        f'border-radius:10px;padding:0 10px;font-size:0.7rem;font-weight:600;'
+                        f'margin-left:8px;">{phase}</span>'
+                    ) if phase else ''
 
-                phase_color = PHASE_COLORS.get(phase, '#1E3A5F')
-                phase_badge = (
-                    f'<span style="display:inline-block;background:{phase_color};color:white;'
-                    f'border-radius:10px;padding:0 10px;font-size:0.7rem;font-weight:600;'
-                    f'margin-left:8px;">{phase}</span>'
-                ) if phase else ''
+                    st.markdown(
+                        f'<div style="background:white;border-radius:12px;padding:16px 20px;margin:8px 0;'
+                        f'box-shadow:0 4px 16px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);'
+                        f'border-left:4px solid #1E3A5F;">'
+                        f'<div style="font-size:1rem;font-weight:700;color:#1E3A5F;margin-bottom:12px;'
+                        f'border-bottom:2px solid #E8EDF3;padding-bottom:8px;">'
+                        f'{pname}{phase_badge}</div>'
+                        f'<div style="display:flex;gap:20px;">'
+                        f'<div style="flex:1;"><div style="font-size:0.75rem;font-weight:700;color:#1565C0;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Objectives</div>'
+                        f'<div style="font-size:0.88rem;color:#333;line-height:1.6;">{_fmt_lines(obj) or "<span style=color:#AAA;font-style:italic;>No objectives recorded</span>"}</div></div>'
+                        f'<div style="flex:1;"><div style="font-size:0.75rem;font-weight:700;color:#E65100;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Key Updates</div>'
+                        f'<div style="font-size:0.88rem;color:#333;line-height:1.6;">{_fmt_lines(updates) or "<span style=color:#AAA;font-style:italic;>No updates recorded</span>"}</div></div>'
+                        f'</div></div>',
+                        unsafe_allow_html=True
+                    )
 
-                st.markdown(
-                    f'<div style="background:white;border-radius:12px;padding:16px 20px;margin:8px 0;'
-                    f'box-shadow:0 4px 16px rgba(0,0,0,0.06),0 1px 3px rgba(0,0,0,0.04);'
-                    f'border-left:4px solid #1E3A5F;">'
-                    f'<div style="font-size:1rem;font-weight:700;color:#1E3A5F;margin-bottom:12px;'
-                    f'border-bottom:2px solid #E8EDF3;padding-bottom:8px;">'
-                    f'{pname}{phase_badge}</div>'
-                    f'<div style="display:flex;gap:20px;">'
-                    f'<div style="flex:1;"><div style="font-size:0.75rem;font-weight:700;color:#1565C0;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Objectives</div>'
-                    f'<div style="font-size:0.88rem;color:#333;line-height:1.6;">{_fmt_lines(obj) or "<span style=color:#AAA;font-style:italic;>No objectives recorded</span>"}</div></div>'
-                    f'<div style="flex:1;"><div style="font-size:0.75rem;font-weight:700;color:#E65100;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Key Updates</div>'
-                    f'<div style="font-size:0.88rem;color:#333;line-height:1.6;">{_fmt_lines(updates) or "<span style=color:#AAA;font-style:italic;>No updates recorded</span>"}</div></div>'
-                    f'</div></div>',
-                    unsafe_allow_html=True
-                )
-
-                if len(linked):
-                    with st.expander(f"📋 Tasks ({len(linked)})"):
-                        show = linked[['Task', 'Priority', 'Progress', 'Start Date', 'End Date']].copy()
-                        for c in ['Start Date', 'End Date']:
-                            if c in show.columns:
-                                show[c] = pd.to_datetime(show[c], errors='coerce').dt.strftime('%Y-%m-%d')
-                        st.dataframe(show, use_container_width=True, hide_index=True)
+                    if len(linked):
+                        with st.expander(f"📋 Tasks ({len(linked)})"):
+                            show = linked[['Task', 'Priority', 'Progress', 'Start Date', 'End Date']].copy()
+                            for c in ['Start Date', 'End Date']:
+                                if c in show.columns:
+                                    show[c] = pd.to_datetime(show[c], errors='coerce').dt.strftime('%Y-%m-%d')
+                            st.dataframe(show, use_container_width=True, hide_index=True)
 
 else:
     st.info("Upload Excel file to get started")
