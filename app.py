@@ -93,13 +93,13 @@ if uploaded_file:
 
     with tab1:
         mc1, mc2, mc3, mc4, mc5 = st.columns(5)
-        mc1.metric("Project Count", len(projects))
+        mc1.metric("📊 Project Count", len(projects))
         vetra_rate = len(projects[projects['Vetra Adopted or Not'] == 'Yes']) / len(projects) * 100
-        mc2.metric("Vetra Adoption Rate", f"{vetra_rate:.1f}%")
-        mc3.metric("Total Budget ($K)", f"${projects['Budget Amount ($K)'].sum():,.0f}")
-        mc4.metric("Task Count", len(tasks))
+        mc2.metric("📈 Vetra Adoption Rate", f"{vetra_rate:.1f}%")
+        mc3.metric("💰 Total Budget ($K)", f"${projects['Budget Amount ($K)'].sum():,.0f}")
+        mc4.metric("📋 Task Count", len(tasks))
         comp_rate = len(tasks[tasks['Progress'] == 'Completed']) / len(tasks) * 100
-        mc5.metric("Task Completion Rate", f"{comp_rate:.1f}%")
+        mc5.metric("✅ Task Completion Rate", f"{comp_rate:.1f}%")
 
         st.divider()
 
@@ -119,7 +119,7 @@ if uploaded_file:
         )
         fig_phase.update_traces(
             textposition='outside', cliponaxis=False,
-            marker=dict(line=dict(width=1, color='rgba(0,0,0,0.12)'))
+            marker=dict(line=dict(width=2, color='rgba(255,255,255,0.5)'), opacity=0.88)
         )
         fig_phase.update_layout(
             showlegend=False,
@@ -157,7 +157,7 @@ if uploaded_file:
                 color_discrete_sequence=px.colors.qualitative.Set2,
             )
             fig_type.update_traces(
-                texttemplate='%{label}<br>%{percent}<br><b>$%{value:,.0f}K</b>',
+                texttemplate='%{label}<br>%{percent}',
                 textposition='outside', hovertemplate='<b>%{label}</b><br>$%{value:,.0f}K<br>%{percent}<extra></extra>',
                 pull=[0.02]*len(type_budget),
                 marker=dict(line=dict(width=2, color='white'))
@@ -185,7 +185,7 @@ if uploaded_file:
                 color_discrete_sequence=px.colors.qualitative.Set1,
             )
             fig_status.update_traces(
-                texttemplate='%{label}<br>%{percent}<br><b>$%{value:,.0f}K</b>',
+                texttemplate='%{label}<br>%{percent}',
                 textposition='outside', hovertemplate='<b>%{label}</b><br>$%{value:,.0f}K<br>%{percent}<extra></extra>',
                 pull=[0.02]*len(status_budget),
                 marker=dict(line=dict(width=2, color='white'))
