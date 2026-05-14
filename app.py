@@ -54,15 +54,9 @@ st.markdown("""
     }
     div[data-testid="stPlotlyChart"] {
         background: white; border-radius: 14px;
-        padding: 8px 12px 4px 12px; margin: 14px 0;
+        padding: 0; margin: 14px 0;
         box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04);
         border: 1px solid rgba(30,58,95,0.06);
-        position: relative;
-    }
-    div[data-testid="stPlotlyChart"]::before {
-        content: ''; position: absolute; top: 0; left: 16px; right: 16px; height: 3px;
-        background: linear-gradient(90deg, #1E3A5F, #5A8AAA);
-        border-radius: 0 0 3px 3px;
     }
 </style>
 """, unsafe_allow_html=True)
