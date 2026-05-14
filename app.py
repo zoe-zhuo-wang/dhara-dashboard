@@ -52,12 +52,7 @@ st.markdown("""
         color: #7A9AB5 !important; letter-spacing: 0.8px;
         text-transform: uppercase;
     }
-    div[data-testid="stPlotlyChart"] {
-        background: white; border-radius: 14px;
-        margin: 14px 0; padding: 0;
-        outline: 1px solid rgba(30,58,95,0.06);
-        box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04);
-    }
+
 </style>
 """, unsafe_allow_html=True)
 
