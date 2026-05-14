@@ -56,10 +56,7 @@ st.markdown("""
         color: #7A9AB5 !important; letter-spacing: 0.8px;
         text-transform: uppercase;
     }
-    div[data-testid="stPlotlyChart"] {
-        border-radius: 14px;
-        box-shadow: 0 0 0 1px rgba(30,58,95,0.06), 0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04);
-    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -109,10 +106,14 @@ if uploaded_file:
         phase_counts = projects['Current Phase'].value_counts().reset_index()
         phase_counts.columns = ['Current Phase', 'Count']
         colors = px.colors.qualitative.Bold + px.colors.qualitative.Set2
+        st.markdown(
+            '<div style="font-size:1rem;font-weight:700;color:#1E3A5F;text-align:center;'
+            'margin-bottom:4px;">Project Status Overview</div>',
+            unsafe_allow_html=True
+        )
         fig_phase = px.bar(
             phase_counts, y='Current Phase', x='Count',
-            orientation='h',
-            title=dict(text="Project Status Overview", font=dict(size=16, color='#1E3A5F'), x=0.5, xanchor='center'),
+            orientation='h', title=None,
             color='Current Phase', color_discrete_sequence=colors,
             text='Count'
         )
@@ -131,23 +132,26 @@ if uploaded_file:
             },
             plot_bgcolor='rgba(245,247,250,0.6)',
             paper_bgcolor='white',
-            margin=dict(t=50, r=40, b=20, l=10),
+            margin=dict(t=40, r=40, b=20, l=10),
             hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
             font=dict(color='#4A6A8A')
         )
         st.plotly_chart(fig_phase, use_container_width=True)
 
-        bs_opts = sorted(projects['Budget Status'].dropna().unique().tolist())
-        sel_bs = st.multiselect("Filter by Budget Status", bs_opts, default=bs_opts)
-
         left, right = st.columns(2)
         with left:
+            st.markdown(
+                '<div style="font-size:1rem;font-weight:700;color:#1E3A5F;text-align:center;'
+                'margin-bottom:4px;">Budget Distribution by Funding Type</div>',
+                unsafe_allow_html=True
+            )
+            bs_opts = sorted(projects['Budget Status'].dropna().unique().tolist())
+            sel_bs = st.multiselect("Filter by Budget Status", bs_opts, default=bs_opts)
             p_filtered = projects[projects['Budget Status'].isin(sel_bs)] if sel_bs else projects
             type_budget = p_filtered.groupby('Funding Type')['Budget Amount ($K)'].sum().reset_index()
             fig_type = px.pie(
                 type_budget, values='Budget Amount ($K)', names='Funding Type',
-                title=dict(text="Budget Distribution by Funding Type", font=dict(size=16, color='#1E3A5F'), x=0.5, xanchor='center'),
-                hole=0.4,
+                title=None, hole=0.4,
                 color_discrete_sequence=px.colors.qualitative.Set2,
             )
             fig_type.update_traces(
@@ -160,16 +164,22 @@ if uploaded_file:
                 hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
                 font=dict(color='#4A6A8A'),
                 paper_bgcolor='white', height=420,
-                margin=dict(t=50, b=40, l=120, r=120),
+                margin=dict(t=40, b=40, l=120, r=120),
             )
             st.plotly_chart(fig_type, use_container_width=True)
 
         with right:
+            st.markdown(
+                '<div style="font-size:1rem;font-weight:700;color:#1E3A5F;text-align:center;'
+                'margin-bottom:4px;">Budget Distribution by Budget Status</div>',
+                unsafe_allow_html=True
+            )
+            st.multiselect("Filter by Budget Status", [], key="dummy_align",
+                           disabled=True, label_visibility="hidden")
             status_budget = projects.groupby('Budget Status')['Budget Amount ($K)'].sum().reset_index()
             fig_status = px.pie(
                 status_budget, values='Budget Amount ($K)', names='Budget Status',
-                title=dict(text="Budget Distribution by Budget Status", font=dict(size=16, color='#1E3A5F'), x=0.5, xanchor='center'),
-                hole=0.4,
+                title=None, hole=0.4,
                 color_discrete_sequence=px.colors.qualitative.Set1,
             )
             fig_status.update_traces(
@@ -182,7 +192,7 @@ if uploaded_file:
                 hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
                 font=dict(color='#4A6A8A'),
                 paper_bgcolor='white', height=420,
-                margin=dict(t=50, b=40, l=120, r=120),
+                margin=dict(t=40, b=40, l=120, r=120),
             )
             st.plotly_chart(fig_status, use_container_width=True)
 
