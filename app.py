@@ -162,7 +162,14 @@ if uploaded_file:
             st.dataframe(tf, use_container_width=True, hide_index=True)
 
     with tab2:
-        for team_name, team_members in members.groupby('Team'):
+        team_order = ['Regular Team', 'ISS Team']
+        for team_name in team_order:
+            team_members = members[members['Team'] == team_name]
+            if team_members.empty:
+                continue
+
+            team_members = team_members.sort_values('Name')
+
             st.markdown(
                 f'<div style="font-size:1.1rem;font-weight:700;color:#1E3A5F;'
                 f'margin:20px 0 12px 0;padding:10px 16px;border-radius:10px;'
@@ -172,8 +179,21 @@ if uploaded_file:
                 unsafe_allow_html=True
             )
 
+            prev_initial = ''
             for _, m in team_members.iterrows():
                 name = m['Name']
+                email = m.get('Email Address') or m.get('Email') or ''
+                initial = name[0].upper() if name else ''
+
+                if initial != prev_initial:
+                    st.markdown(
+                        f'<div style="font-size:0.8rem;font-weight:700;color:#9AAFC5;'
+                        f'padding:2px 0 2px 8px;margin:8px 0 2px 0;'
+                        f'border-bottom:1px solid #D8E0E8;">{initial}</div>',
+                        unsafe_allow_html=True
+                    )
+                    prev_initial = initial
+
                 projs = projects[projects['DT Owner'] == name]['Project Name'].tolist()
                 tks = tasks[tasks['Assignee'] == name]['Task'].tolist()
 
@@ -184,8 +204,9 @@ if uploaded_file:
                         f'<div style="width:40px;height:40px;border-radius:50%;background:linear-gradient(145deg,#1E3A5F,#2A5080);color:white;'
                         f'display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1rem;flex-shrink:0;'
                         f'box-shadow:0 2px 6px rgba(30,58,95,0.25),inset 0 1px 0 rgba(255,255,255,0.15);">'
-                        f'{name[0].upper()}</div>'
-                        f'<div style="font-size:0.95rem;font-weight:600;color:#1E3A5F;">{name}</div></div>',
+                        f'{initial}</div>'
+                        f'<div><div style="font-size:0.95rem;font-weight:600;color:#1E3A5F;">{name}</div>'
+                        f'<div style="font-size:0.7rem;color:#8AA0B8;margin-top:1px;">{email}</div></div></div>',
                         unsafe_allow_html=True
                     )
 
@@ -233,6 +254,8 @@ if uploaded_file:
                             f'TASKS{badge}</div>{items}</div>',
                             unsafe_allow_html=True
                         )
+
+                st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
 
 else:
     st.info("Upload Excel file to get started")
