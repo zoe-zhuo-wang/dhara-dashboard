@@ -138,6 +138,8 @@ if uploaded_file:
         )
         st.plotly_chart(fig_phase, use_container_width=True)
 
+        st.markdown('<div style="height:24px;"></div>', unsafe_allow_html=True)
+
         left, right = st.columns(2)
         with left:
             st.markdown(
