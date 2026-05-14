@@ -6,46 +6,63 @@ st.set_page_config(page_title="Dhara Team Project Dashboard", layout="wide")
 
 st.markdown("""
 <style>
-    .stApp { background: linear-gradient(135deg, #F5F7FA 0%, #EDF0F5 100%); }
+    .stApp { background: radial-gradient(ellipse at 30% 20%, #F5F7FA 0%, #E8ECF2 60%, #EFF2F7 100%); }
     .main > div { padding-top: 1.5rem; }
     h1 {
         color: #1E3A5F !important;
-        font-weight: 700 !important;
+        font-weight: 800 !important;
         font-size: 1.8rem !important;
-        text-shadow: 1px 1px 0 rgba(255,255,255,0.8);
-        border-bottom: 3px solid #1E3A5F;
-        padding-bottom: 0.5rem;
-        margin-bottom: 1rem;
+        letter-spacing: 0.8px;
+        border-bottom: 2px solid rgba(30,58,95,0.12);
+        padding-bottom: 0.6rem;
+        margin-bottom: 1.4rem;
     }
-    .stTabs [data-baseweb="tab"] { font-weight: 600; font-size: 0.95rem; letter-spacing: 0.3px; }
+    .stTabs [data-baseweb="tab"] {
+        font-weight: 600; font-size: 0.95rem; letter-spacing: 0.5px;
+        color: #7A9AB5 !important; padding: 8px 22px;
+    }
+    .stTabs [aria-selected="true"] { color: #1E3A5F !important; font-weight: 700 !important; }
     div[data-testid="stExpander"] {
-        background: white; border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
-        border: none; margin: 8px 0;
+        background: white; border-radius: 14px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        border: 1px solid rgba(30,58,95,0.06); margin: 14px 0;
     }
-    div[data-testid="stExpander"] > div:first-child { border-radius: 12px 12px 0 0; }
+    div[data-testid="stExpander"] > div:first-child { border-radius: 14px 14px 0 0; }
     div[data-testid="metric-container"] {
-        background: linear-gradient(145deg, #FFFFFF 0%, #F8FAFE 100%);
-        padding: 16px 20px; border-radius: 14px;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
-        border: 1px solid rgba(30,58,95,0.08);
+        background: white; padding: 18px 22px; border-radius: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04);
+        border: 1px solid rgba(30,58,95,0.06);
         position: relative; overflow: hidden;
     }
     div[data-testid="metric-container"]::before {
         content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%;
-        background: linear-gradient(180deg, #1E3A5F, #2A5080);
-        border-radius: 14px 0 0 14px;
+        background: linear-gradient(180deg, #1E3A5F, #3A6A9A);
     }
     div[data-testid="metric-container"]::after {
         content: ''; position: absolute; top: 0; left: 0; right: 0; height: 50%;
-        background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, transparent 100%);
-        pointer-events: none;
+        background: linear-gradient(180deg, rgba(255,255,255,0.6) 0%, transparent 100%);
+        pointer-events: none; border-radius: 16px 16px 0 0;
     }
-    .chart-card {
-        background: white; border-radius: 14px; padding: 10px 14px 6px 14px;
-        margin: 14px 0;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    div[data-testid="stMetricValue"] {
+        font-size: 1.6rem !important; font-weight: 700 !important;
+        color: #1E3A5F !important; letter-spacing: 0.3px;
+    }
+    div[data-testid="stMetricLabel"] {
+        font-size: 0.75rem !important; font-weight: 500 !important;
+        color: #7A9AB5 !important; letter-spacing: 0.8px;
+        text-transform: uppercase;
+    }
+    div[data-testid="stPlotlyChart"] {
+        background: white; border-radius: 14px;
+        padding: 8px 12px 4px 12px; margin: 14px 0;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 8px 32px rgba(0,0,0,0.04);
         border: 1px solid rgba(30,58,95,0.06);
+        position: relative;
+    }
+    div[data-testid="stPlotlyChart"]::before {
+        content: ''; position: absolute; top: 0; left: 16px; right: 16px; height: 3px;
+        background: linear-gradient(90deg, #1E3A5F, #5A8AAA);
+        border-radius: 0 0 3px 3px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -121,13 +138,10 @@ if uploaded_file:
             hoverlabel=dict(bgcolor='white', font_size=12, font_color='#1E3A5F'),
             font=dict(color='#4A6A8A')
         )
-        st.markdown('<div class="chart-card">', unsafe_allow_html=True)
         st.plotly_chart(fig_phase, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
 
         left, right = st.columns(2)
         with left:
-            st.markdown('<div class="chart-card">', unsafe_allow_html=True)
             st.markdown(
                 '<div style="font-size:1rem;font-weight:700;color:#1E3A5F;text-align:center;'
                 'margin-bottom:4px;">Budget Distribution by Funding Type</div>',
@@ -154,16 +168,14 @@ if uploaded_file:
                 paper_bgcolor='rgba(255,255,255,0.3)',
             )
             st.plotly_chart(fig_type, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
 
         with right:
-            st.markdown('<div class="chart-card">', unsafe_allow_html=True)
             st.markdown(
                 '<div style="font-size:1rem;font-weight:700;color:#1E3A5F;text-align:center;'
                 'margin-bottom:4px;">Budget Distribution by Budget Status</div>',
                 unsafe_allow_html=True
             )
-            st.markdown('<div style="height:68px;"></div>', unsafe_allow_html=True)
+            st.markdown('<div style="height:74px;"></div>', unsafe_allow_html=True)
             status_budget = projects.groupby('Budget Status')['Budget Amount ($K)'].sum().reset_index()
             fig_status = px.pie(
                 status_budget, values='Budget Amount ($K)', names='Budget Status',
@@ -182,7 +194,6 @@ if uploaded_file:
                 paper_bgcolor='rgba(255,255,255,0.3)',
             )
             st.plotly_chart(fig_status, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
 
         with st.expander("Project Details"):
             pf = projects.copy()
