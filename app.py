@@ -1,3 +1,4 @@
+from itertools import cycle
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -67,12 +68,6 @@ uploaded_file = st.file_uploader("Upload PM Excel File", type=["xlsx"])
 FILTER_COLS_PROJ = ['Funding Type', 'AI Project or Not', 'DT Owner', 'Current Phase',
                      'Budget Status', 'Vetra Adopted or Not', 'Overall Status']
 FILTER_COLS_TASK = ['Linked Project', 'Assignee', 'Priority', 'Progress']
-
-PHASE_COLORS = {
-    'DEV': '#7FC97F',
-    'Budget Application': '#BEAED4',
-    'UAT': '#FDC086',
-}
 
 def _fmt_lines(text):
     import re
@@ -316,6 +311,10 @@ if uploaded_file:
 
         pf = projects[projects['DT Owner'].isin(selected)] if selected else projects
 
+        phases = sorted(pf['Current Phase'].dropna().unique())
+        colors = px.colors.qualitative.Bold + px.colors.qualitative.Set2
+        phase_colors = dict(zip(phases, cycle(colors)))
+
         for owner in sorted(pf['DT Owner'].unique()):
             owner_projs = pf[pf['DT Owner'] == owner]
             with st.expander(f"👤 {owner}  ·  {len(owner_projs)} projects", expanded=True):
@@ -328,7 +327,7 @@ if uploaded_file:
                     updates = '' if (isinstance(upd_val, float) and pd.isna(upd_val)) else str(upd_val or '')
                     linked = tasks[tasks['Linked Project'] == pname]
 
-                    phase_color = PHASE_COLORS.get(phase, '#1E3A5F')
+                    phase_color = phase_colors.get(phase, '#1E3A5F')
                     phase_badge = (
                         f'<span style="display:inline-block;background:{phase_color};color:white;'
                         f'border-radius:10px;padding:0 10px;font-size:0.7rem;font-weight:600;'
