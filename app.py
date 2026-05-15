@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.io as pio
+import io
+import datetime
+from fpdf import FPDF
 
 st.set_page_config(page_title="Dhara Team Project Dashboard", layout="wide")
 
@@ -79,6 +83,178 @@ def _fmt_lines(text):
     s = re.sub(r'([。])\s*', r'\1<br>', str(text))
     s = re.sub(r'(\.)\s+', r'\1<br>', s)
     return s.strip()
+
+def _make_dashboard_pdf(projects, tasks, sel_bs):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.add_page()
+
+    pdf.set_font("Helvetica", "B", 20)
+    pdf.cell(0, 14, "Dhara Team Project Dashboard", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.set_font("Helvetica", "", 11)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 8, f"Summary Report  |  {datetime.date.today().strftime('%B %d, %Y')}", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(6)
+
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.set_text_color(30, 58, 95)
+    pdf.cell(0, 10, "1. Key Metrics", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(2)
+
+    metrics = [
+        ("Project Count", str(len(projects))),
+        ("Vetra Adoption Rate", f"{len(projects[projects['Vetra Adopted or Not'] == 'Yes']) / len(projects) * 100:.1f}%"),
+        ("Total Budget ($K)", f"${projects['Budget Amount ($K)'].sum():,.0f}"),
+        ("Task Count", str(len(tasks))),
+        ("Task Completion Rate", f"{len(tasks[tasks['Progress'] == 'Completed']) / len(tasks) * 100:.1f}%"),
+    ]
+
+    pdf.set_font("Helvetica", "B", 10)
+    pdf.set_fill_color(30, 58, 95)
+    pdf.set_text_color(255, 255, 255)
+    wm, wv = 100, 50
+    pdf.cell(wm, 9, "Metric", border=1, fill=True, align="C")
+    pdf.cell(wv, 9, "Value", border=1, fill=True, align="C")
+    pdf.ln()
+    pdf.set_font("Helvetica", "", 10)
+    pdf.set_text_color(0, 0, 0)
+    for i, (k, v) in enumerate(metrics):
+        pdf.set_fill_color(240, 244, 248) if i % 2 == 0 else pdf.set_fill_color(255, 255, 255)
+        pdf.cell(wm, 8, f"  {k}", border=1, fill=True)
+        pdf.cell(wv, 8, v, border=1, fill=True, align="C")
+        pdf.ln()
+    pdf.ln(8)
+
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.set_text_color(30, 58, 95)
+    pdf.cell(0, 10, "2. Project Status Overview", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_text_color(0, 0, 0)
+
+    phase_counts = projects['Current Phase'].value_counts().reset_index()
+    phase_counts.columns = ['Current Phase', 'Count']
+    fig = px.bar(
+        phase_counts, y='Current Phase', x='Count', orientation='h',
+        color='Current Phase',
+        color_discrete_sequence=px.colors.qualitative.Bold + px.colors.qualitative.Set2,
+        text='Count'
+    )
+    fig.update_traces(textposition='outside', cliponaxis=False,
+                      marker=dict(line=dict(width=2, color='rgba(255,255,255,0.5)'), opacity=0.88))
+    fig.update_layout(showlegend=False, yaxis={'categoryorder': 'total ascending'},
+                      paper_bgcolor='white', plot_bgcolor='rgba(245,247,250,0.6)',
+                      margin=dict(t=10, r=10, b=10, l=10))
+    buf = io.BytesIO()
+    pio.write_image(fig, buf, format='png', width=800, height=350, scale=2)
+    pdf.image(buf, x=10, w=180)
+    pdf.ln(8)
+
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.set_text_color(30, 58, 95)
+    pdf.cell(0, 10, "3. Budget by Funding Type", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_text_color(0, 0, 0)
+
+    p_filtered = projects[projects['Budget Status'].isin(sel_bs)] if sel_bs else projects
+    type_budget = p_filtered.groupby('Funding Type')['Budget Amount ($K)'].sum().reset_index()
+    fig = px.pie(type_budget, values='Budget Amount ($K)', names='Funding Type',
+                 hole=0.4, color_discrete_sequence=px.colors.qualitative.Set2)
+    fig.update_traces(texttemplate='%{label}<br>%{percent}<br><b>$%{value:,.0f}K</b>',
+                      textposition='outside', marker=dict(line=dict(width=2, color='white')))
+    fig.update_layout(paper_bgcolor='white', margin=dict(t=10, b=10, l=10, r=10), showlegend=False)
+    buf = io.BytesIO()
+    pio.write_image(fig, buf, format='png', width=700, height=400, scale=2)
+    pdf.image(buf, x=10, w=180)
+    pdf.ln(8)
+
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.set_text_color(30, 58, 95)
+    pdf.cell(0, 10, "4. Budget by Budget Status", new_x="LMARGIN", new_y="NEXT")
+    pdf.set_text_color(0, 0, 0)
+
+    status_budget = projects.groupby('Budget Status')['Budget Amount ($K)'].sum().reset_index()
+    fig = px.pie(status_budget, values='Budget Amount ($K)', names='Budget Status',
+                 hole=0.4, color_discrete_sequence=px.colors.qualitative.Set1)
+    fig.update_traces(texttemplate='%{label}<br>%{percent}<br><b>$%{value:,.0f}K</b>',
+                      textposition='outside', marker=dict(line=dict(width=2, color='white')))
+    fig.update_layout(paper_bgcolor='white', margin=dict(t=10, b=10, l=10, r=10), showlegend=False)
+    buf = io.BytesIO()
+    pio.write_image(fig, buf, format='png', width=700, height=400, scale=2)
+    pdf.image(buf, x=10, w=180)
+
+    buf = io.BytesIO()
+    pdf.output(buf)
+    return buf.getvalue()
+
+
+def _make_team_pdf(projects, tasks, members):
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=20)
+    pdf.add_page()
+
+    pdf.set_font("Helvetica", "B", 20)
+    pdf.cell(0, 14, "Dhara Team Overview", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.set_font("Helvetica", "", 11)
+    pdf.set_text_color(100, 100, 100)
+    pdf.cell(0, 8, f"Team Members Report  |  {datetime.date.today().strftime('%B %d, %Y')}", new_x="LMARGIN", new_y="NEXT", align="C")
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(6)
+
+    for team_name in ['Regular Team', 'ISS Team']:
+        team_members = members[members['Team'] == team_name].sort_values('Name')
+        if team_members.empty:
+            continue
+
+        pdf.set_font("Helvetica", "B", 14)
+        pdf.set_text_color(30, 58, 95)
+        pdf.cell(0, 10, f"{team_name}  -  {len(team_members)} members", new_x="LMARGIN", new_y="NEXT")
+        pdf.set_text_color(0, 0, 0)
+        pdf.ln(2)
+
+        for _, m in team_members.iterrows():
+            name = m['Name']
+            email = m.get('Email Address') or m.get('Email') or ''
+            projs = projects[projects['DT Owner'] == name]['Project Name'].tolist()
+            tks = tasks[tasks['Assignee'] == name]['Task'].tolist()
+
+            if pdf.get_y() > 230:
+                pdf.add_page()
+
+            pdf.set_font("Helvetica", "B", 11)
+            pdf.set_fill_color(240, 244, 248)
+            pdf.cell(0, 8, f"  {name}  ({email})", new_x="LMARGIN", new_y="NEXT", fill=True)
+
+            pdf.set_font("Helvetica", "", 10)
+            pdf.set_text_color(21, 101, 192)
+            pdf.cell(0, 6, "    Projects:", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(0, 0, 0)
+            pdf.set_font("Helvetica", "", 9)
+            if projs:
+                for p in projs:
+                    pdf.cell(0, 5, f"      - {p}", new_x="LMARGIN", new_y="NEXT")
+            else:
+                pdf.set_text_color(150, 150, 150)
+                pdf.cell(0, 5, "      (No Projects)", new_x="LMARGIN", new_y="NEXT")
+                pdf.set_text_color(0, 0, 0)
+
+            pdf.set_font("Helvetica", "", 10)
+            pdf.set_text_color(230, 81, 0)
+            pdf.cell(0, 6, "    Tasks:", new_x="LMARGIN", new_y="NEXT")
+            pdf.set_text_color(0, 0, 0)
+            pdf.set_font("Helvetica", "", 9)
+            if tks:
+                for t in tks:
+                    pdf.cell(0, 5, f"      - {t}", new_x="LMARGIN", new_y="NEXT")
+            else:
+                pdf.set_text_color(150, 150, 150)
+                pdf.cell(0, 5, "      (No Tasks)", new_x="LMARGIN", new_y="NEXT")
+                pdf.set_text_color(0, 0, 0)
+            pdf.ln(3)
+
+    buf = io.BytesIO()
+    pdf.output(buf)
+    return buf.getvalue()
+
 
 if uploaded_file:
     projects = pd.read_excel(uploaded_file, sheet_name="Projects")
@@ -198,6 +374,16 @@ if uploaded_file:
             )
             st.plotly_chart(fig_status, use_container_width=True)
 
+        st.divider()
+        today_str = datetime.date.today().strftime('%Y-%m-%d')
+        st.download_button(
+            "Export Dashboard Summary (PDF)",
+            data=_make_dashboard_pdf(projects, tasks, sel_bs),
+            file_name=f"Dhara_Dashboard_Summary_{today_str}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
+
         with st.expander("Project Details"):
             pf = projects.copy()
             avail = [c for c in FILTER_COLS_PROJ if c in pf.columns]
@@ -309,6 +495,16 @@ if uploaded_file:
                             )
 
                     st.markdown('<div style="height:10px;"></div>', unsafe_allow_html=True)
+
+        st.divider()
+        today_str = datetime.date.today().strftime('%Y-%m-%d')
+        st.download_button(
+            "Export Team Overview (PDF)",
+            data=_make_team_pdf(projects, tasks, members),
+            file_name=f"Dhara_Team_Overview_{today_str}.pdf",
+            mime="application/pdf",
+            use_container_width=True
+        )
 
     with tab3:
         owners = sorted(projects['DT Owner'].dropna().unique())
