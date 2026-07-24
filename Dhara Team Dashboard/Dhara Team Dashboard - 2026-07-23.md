@@ -1,6 +1,6 @@
 # Dhara Team Dashboard - Project Status
 
-## Last Updated: 2026-07-23
+## Last Updated: 2026-07-24
 
 ---
 
@@ -19,7 +19,7 @@ A team resource and project management dashboard for the Dhara team (Lenovo). Bu
 | Drag & Drop | @dnd-kit/core |
 | Database | Supabase (PostgreSQL) |
 | Auth | Supabase Auth |
-| Hosting | Vercel / Cloudflare Pages (TBD) |
+| Hosting | Vercel (https://dhara-team-dashboard.vercel.app) |
 
 ---
 
@@ -70,10 +70,10 @@ A team resource and project management dashboard for the Dhara team (Lenovo). Bu
 - [ ] RLS policies need proper setup (currently wide open)
 - [ ] Profile auto-creation trigger may need testing
 - [ ] Email confirmation should stay disabled for internal use
-- [ ] Deploy to Cloudflare Pages
+- [x] Deploy to Cloudflare Pages → Vercel
 
 ### 🔜 Next Steps
-- [ ] Cloudflare Pages deployment
+- [x] ~~Cloudflare Pages deployment~~ → Deployed to Vercel
 - [ ] Project member assignment UI
 - [ ] Export reports (PDF/Excel)
 - [ ] Notification system
@@ -86,7 +86,7 @@ A team resource and project management dashboard for the Dhara team (Lenovo). Bu
 ## File Structure
 
 ```
-C:\Users\Joy\allo-dashboard\
+C:\Users\Joy\Dhara Team Dashboard\
 ├── .env                          # Supabase credentials
 ├── index.html
 ├── package.json
@@ -142,7 +142,7 @@ Without this, the frontend API calls will fail with "permission denied".
 ## Local Dev
 
 ```bash
-cd C:\Users\Joy\allo-dashboard
+cd "C:\Users\Joy\Dhara Team Dashboard"
 npm install
 npm run dev
 # Opens at http://localhost:5173/
