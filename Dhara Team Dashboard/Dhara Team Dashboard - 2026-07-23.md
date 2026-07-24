@@ -6,7 +6,7 @@
 
 ## Overview
 
-A team resource and project management dashboard for the Dhara team (Lenovo). Built with React + Supabase + Tailwind CSS. Deployed via Cloudflare Pages.
+A team resource and project management dashboard for the Dhara team (Lenovo). Built with React + Supabase + Tailwind CSS. Deployed via GitHub Pages (accessible from China).
 
 ---
 
@@ -19,7 +19,34 @@ A team resource and project management dashboard for the Dhara team (Lenovo). Bu
 | Drag & Drop | @dnd-kit/core |
 | Database | Supabase (PostgreSQL) |
 | Auth | Supabase Auth |
-| Hosting | Vercel (https://dhara-team-dashboard.vercel.app) |
+| Hosting | GitHub Pages (https://zoe-zhuo-wang.github.io/dhara-dashboard/) |
+| Router | HashRouter (supports SPA refresh on GitHub Pages) |
+
+---
+
+## Deployment
+
+### Production (GitHub Pages)
+- **URL:** https://zoe-zhuo-wang.github.io/dhara-dashboard/
+- **Repo:** https://github.com/zoe-zhuo-wang/dhara-dashboard
+- **Branch:** `gh-pages` (built dist files)
+- **Why:** Vercel (`*.vercel.app`) is slow/blocked from China; GitHub Pages works reliably
+
+### Local Dev
+```bash
+cd "C:\Users\Joy\Dhara Team Dashboard"
+npm run dev
+# Opens at http://localhost:5173/
+```
+
+### Deploy to GitHub Pages
+```bash
+npm run build
+git add Dhara Team Dashboard/dist --force
+git commit -m "deploy: update build"
+git subtree split --prefix="Dhara Team Dashboard/dist" -b gh-pages
+git push github gh-pages --force
+```
 
 ---
 
@@ -70,10 +97,8 @@ A team resource and project management dashboard for the Dhara team (Lenovo). Bu
 - [ ] RLS policies need proper setup (currently wide open)
 - [ ] Profile auto-creation trigger may need testing
 - [ ] Email confirmation should stay disabled for internal use
-- [x] Deploy to Cloudflare Pages → Vercel
 
 ### 🔜 Next Steps
-- [x] ~~Cloudflare Pages deployment~~ → Deployed to Vercel
 - [ ] Project member assignment UI
 - [ ] Export reports (PDF/Excel)
 - [ ] Notification system
@@ -139,17 +164,6 @@ Without this, the frontend API calls will fail with "permission denied".
 
 ---
 
-## Local Dev
-
-```bash
-cd "C:\Users\Joy\Dhara Team Dashboard"
-npm install
-npm run dev
-# Opens at http://localhost:5173/
-```
-
----
-
 ## Design System
 
 - **Primary:** #1a56db (blue)
@@ -158,3 +172,17 @@ npm run dev
 - **Text:** #0f172a
 - **Border:** #e2e8f0
 - **Font:** Inter / system sans-serif
+
+---
+
+## Changelog
+
+### 2026-07-24
+- Deployed to Vercel (https://dhara-team-dashboard.vercel.app) — not accessible from China
+- Switched to GitHub Pages for China-friendly access
+- Changed BrowserRouter → HashRouter to support SPA refresh on GitHub Pages
+- Hardcoded Supabase credentials as fallback in `src/lib/supabase.js`
+- Added `vercel.json` for SPA routing (kept for future use)
+- Added `gh-pages` npm package for deployment
+- Updated `vite.config.js` with `base: '/dhara-dashboard/'`
+- Enabled GitHub Pages on repo `zoe-zhuo-wang/dhara-dashboard`
