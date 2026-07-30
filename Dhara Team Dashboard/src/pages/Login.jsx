@@ -45,7 +45,7 @@ export default function Login() {
           }}>
             <span style={{ color: 'white', fontWeight: 800, fontSize: 28 }}>D</span>
           </div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 6px', color: 'var(--text)' }}>Dhara Team Dashboard</h1>
+          <h1 style={{ fontSize: 24, fontWeight: 700, margin: '0 0 6px', color: 'var(--text)' }}>Dhara's Team Dashboard</h1>
           <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 14 }}>Sign in to manage your projects</p>
         </div>
 

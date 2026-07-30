@@ -151,7 +151,7 @@ CREATE TRIGGER on_auth_user_created
 -- ============================================
 
 INSERT INTO settings (key, value) VALUES
-  ('team_name', 'Dhara Team'),
+  ('team_name', 'Dhara''s Team'),
   ('currency', 'USD'),
   ('working_days_per_month', '22')
 ON CONFLICT (key) DO NOTHING;
@@ -160,5 +160,6 @@ ON CONFLICT (key) DO NOTHING;
 -- v1.1: DT Focal + Funding Type
 -- ============================================
 
-ALTER TABLE projects ADD COLUMN IF NOT EXISTS dt_focal_id UUID REFERENCES people(id) ON DELETE SET NULL;
+-- dt_focal_id: 逗号分隔的 person UUID 字符串（v2026-07-30 改为 TEXT 支持多人）
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS dt_focal_id TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS funding_type TEXT CHECK (funding_type IN ('R&D', 'R&D AI', 'Vendor Onboarding', 'BAU'));

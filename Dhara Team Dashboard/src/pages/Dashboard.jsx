@@ -1,283 +1,372 @@
-import { useState, useEffect } from 'react'
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts'
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
-import { SortableContext, useSortable, rectSortingStrategy, arrayMove } from '@dnd-kit/sortable'
-import { CSS } from '@dnd-kit/utilities'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { supabase } from '../lib/supabase'
 
-const COLORS = ['#1a56db', '#16a34a', '#d97706', '#dc2626', '#7c3aed', '#0891b2']
-const OVERALL_STATUS_COLORS = { 'On Track': '#16a34a', 'Caution': '#d97706', 'Off Track': '#dc2626', 'Finished': '#1a56db', 'Not Started': '#94a3b8' }
-
-const defaultWidgets = [
-  { id: 'kpi', title: 'Overview' },
-  { id: 'monthly', title: 'Monthly Man-Day Trend' },
-  { id: 'status', title: 'Project Status' },
-  { id: 'usage', title: 'Budget Usage' },
-  { id: 'recent', title: 'Recent Projects' },
-]
+const PHASE_COLORS = {
+  'Budget Application': '#3b82f6',
+  'BSR / ISR': '#8b5cf6',
+  'UAT': '#f59e0b',
+  'DEV': '#22c55e',
+  'Golive': '#14b8a6',
+  'Unknown': '#94a3b8',
+}
+const FUNDING_COLORS = {
+  'R&D': '#3b82f6',
+  'R&D AI': '#8b5cf6',
+  'Vendor Onboarding': '#f59e0b',
+  'BAU': '#22c55e',
+  'Unknown': '#94a3b8',
+}
+const BUDGET_STATUS_COLORS = {
+  'Draft': '#94a3b8',
+  'Ongoing': '#f59e0b',
+  'Approved': '#10b981',
+  'Unknown': '#cbd5e1',
+}
+const FALLBACK = ['#3b82f6', '#8b5cf6', '#f59e0b', '#22c55e', '#14b8a6', '#94a3b8', '#ec4899', '#f97316']
 
 export default function Dashboard() {
-  const [widgets, setWidgets] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('dhara-widgets')) || defaultWidgets }
-    catch { return defaultWidgets }
-  })
-  const [stats, setStats] = useState({ projects: 0, people: 0, totalBudget: 0, totalSpent: 0 })
-  const [statusData, setStatusData] = useState([])
-  const [monthlyData, setMonthlyData] = useState([])
-  const [recentProjects, setRecentProjects] = useState([])
-  const [people, setPeople] = useState([])
+  const [projects, setProjects] = useState([])
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
+  useEffect(() => { loadProjects() }, [])
 
-  useEffect(() => { loadDashboard() }, [])
-  useEffect(() => { localStorage.setItem('dhara-widgets', JSON.stringify(widgets)) }, [widgets])
-
-  const loadDashboard = async () => {
-    const [projectsRes, peopleRes, allocationsRes] = await Promise.all([
-      supabase.from('projects').select('*').order('created_at', { ascending: false }),
-      supabase.from('people').select('*'),
-      supabase.from('allocations').select('*')
-    ])
-
-    const projects = projectsRes.data || []
-    const people = peopleRes.data || []
-    const allocations = allocationsRes.data || []
-
-    setStats({
-      projects: projects.length,
-      people: people.filter(p => p.is_active).length,
-      totalBudget: projects.reduce((s, p) => s + (p.budget || 0), 0),
-      totalSpent: projects.reduce((s, p) => s + (p.spent || 0), 0)
-    })
-
-    const statusCounts = {}
-    projects.forEach(p => { statusCounts[p.overall_status] = (statusCounts[p.overall_status] || 0) + 1 })
-    setStatusData(Object.entries(statusCounts).map(([name, value]) => ({ name, value })))
-
-    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    const currentYear = new Date().getFullYear()
-    setMonthlyData(monthNames.map((name, i) => {
-      const m = allocations.filter(a => a.year === currentYear && a.month === i + 1)
-      return { name, planned: m.reduce((s, a) => s + (a.planned_md || 0), 0), actual: m.reduce((s, a) => s + (a.actual_md || 0), 0) }
-    }))
-
-    setRecentProjects(projects.slice(0, 5))
-    setPeople(people)
+  const loadProjects = async () => {
+    const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false })
+    setProjects(data || [])
   }
 
-  const handleDragEnd = (event) => {
-    const { active, over } = event
-    if (active.id !== over?.id) {
-      setWidgets(items => {
-        const oldIndex = items.findIndex(i => i.id === active.id)
-        const newIndex = items.findIndex(i => i.id === over.id)
-        return arrayMove(items, oldIndex, newIndex)
-      })
-    }
-  }
-
+  const totalProjects = projects.length
+  const vetraYesCount = projects.filter(p => p.vetra_adopted === 'Yes').length
+  const vetraRate = totalProjects > 0 ? ((vetraYesCount / totalProjects) * 100).toFixed(0) : '0'
+  const totalBudget = projects.reduce((s, p) => s + (p.budget || 0), 0)
   const formatMoney = (n) => '$' + (n || 0).toLocaleString()
-  const usagePct = stats.totalBudget > 0 ? ((stats.totalSpent / stats.totalBudget) * 100).toFixed(1) : 0
 
-  const renderWidget = (widget) => {
-    switch (widget.id) {
-      case 'kpi': return <KPIWidget stats={stats} formatMoney={formatMoney} />
-      case 'monthly': return <MonthlyWidget data={monthlyData} />
-      case 'status': return <StatusWidget data={statusData} />
-      case 'usage': return <UsageWidget pct={usagePct} spent={stats.totalSpent} budget={stats.totalBudget} formatMoney={formatMoney} />
-      case 'recent': return <RecentWidget projects={recentProjects} people={people} formatMoney={formatMoney} />
-      default: return null
-    }
-  }
+  const phaseCounts = {}
+  projects.forEach(p => {
+    const phase = p.current_phase || 'Unknown'
+    phaseCounts[phase] = (phaseCounts[phase] || 0) + 1
+  })
+  const phaseData = Object.entries(phaseCounts)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+
+  const fundingBudgets = {}
+  projects.forEach(p => {
+    const ft = p.funding_type || 'Unknown'
+    fundingBudgets[ft] = (fundingBudgets[ft] || 0) + (p.budget || 0)
+  })
+  const fundingData = Object.entries(fundingBudgets)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+
+  const budgetStatusMap = {}
+  projects.forEach(p => {
+    const bs = p.budget_status || 'Unknown'
+    budgetStatusMap[bs] = (budgetStatusMap[bs] || 0) + (p.budget || 0)
+  })
+  const budgetStatusData = Object.entries(budgetStatusMap)
+    .map(([name, value]) => ({ name, value }))
+    .sort((a, b) => b.value - a.value)
+
+  const cardBg = ['#eff6ff', '#f0fdf4', '#fffbeb']
+  const cardAccent = ['#3b82f6', '#22c55e', '#f59e0b']
 
   return (
     <div>
       <div style={{ marginBottom: 28 }}>
-        <h2 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px' }}>Dashboard</h2>
-        <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 14 }}>Overview of your team's projects and resources</p>
+        <h2 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Dashboard</h2>
       </div>
 
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(380px, 1fr))', gap: 20 }}>
-            {widgets.map(widget => (
-              <SortableWidget key={widget.id} id={widget.id}>
-                <WidgetCard title={widget.title}>
-                  {renderWidget(widget)}
-                </WidgetCard>
-              </SortableWidget>
-            ))}
+      {/* Section 1: Overview */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20, marginBottom: 28 }}>
+        <OverviewCard label="Total Projects" value={totalProjects} bg={cardBg[0]} accent={cardAccent[0]} icon={<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/><path d="M2 8h16" stroke="currentColor" strokeWidth="1.5"/></svg>} />
+        <OverviewCard label="Vetra Adoption Rate" value={`${vetraRate}%`} bg={cardBg[1]} accent={cardAccent[1]} sub={`${vetraYesCount} of ${totalProjects} projects`} icon={<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 2l2.5 5 5.5.8-4 3.9.9 5.3L10 14.5 5.1 17l.9-5.3-4-3.9 5.5-.8L10 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>} />
+        <OverviewCard label="Total Budget" value={formatMoney(totalBudget)} bg={cardBg[2]} accent={cardAccent[2]} icon={<svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7.5" stroke="currentColor" strokeWidth="1.5"/><path d="M10 5.5v9M8 7.5c0-1 1-1.5 2-1.5s2 .5 2 1.5-1 1.5-2 1.5-2 .5-2 1.5 1 1.5 2 1.5 2-.5 2-1.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>} />
+      </div>
+
+      {/* Section 2: Project Status */}
+      <div style={sectionStyle}>
+        <div style={titleRow}>
+          <div style={{ width: 4, height: 18, borderRadius: 2, background: '#3b82f6', flexShrink: 0 }} />
+          <h3 style={sectionTitle}>Project Status</h3>
+        </div>
+        <div style={{ borderTop: '1px solid #f1f5f9', margin: '0 -28px 20px', paddingTop: 16, paddingLeft: 28, paddingRight: 28 }}>
+          {phaseData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={Math.max(220, phaseData.length * 48 + 30)}>
+              <BarChart data={phaseData} layout="vertical" margin={{ left: 10, right: 50, top: 5, bottom: 5 }}>
+                <XAxis type="number" stroke="#e2e8f0" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} domain={[0, 30]} />
+                <YAxis type="category" dataKey="name" stroke="#64748b" fontSize={12} width={140} tickLine={false} axisLine={false} />
+                <Tooltip
+                  contentStyle={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 13 }}
+                  cursor={{ fill: 'rgba(59,130,246,0.05)' }}
+                  formatter={(value) => [`${value} project${value !== 1 ? 's' : ''}`, '']}
+                  labelStyle={{ fontWeight: 600, color: '#0f172a' }}
+                />
+                <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={26} label={{ position: 'right', fill: '#64748b', fontSize: 12, fontWeight: 600 }}>
+                  {phaseData.map((entry, i) => (
+                    <Cell key={i} fill={PHASE_COLORS[entry.name] || FALLBACK[i % FALLBACK.length]} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyState />
+          )}
+        </div>
+      </div>
+
+      {/* Section 3: Budget Distribution */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div style={sectionStyle}>
+          <div style={titleRow}>
+            <div style={{ width: 4, height: 18, borderRadius: 2, background: '#8b5cf6', flexShrink: 0 }} />
+            <h3 style={sectionTitle}>Budget Distribution by Funding Type</h3>
           </div>
-        </SortableContext>
-      </DndContext>
+          <div style={{ borderTop: '1px solid #f1f5f9', margin: '0 -28px 20px', paddingTop: 16, paddingLeft: 28, paddingRight: 28 }}>
+            {fundingData.length > 0 ? (
+              <DonutChart data={fundingData} colors={FUNDING_COLORS} formatMoney={formatMoney} />
+            ) : (
+              <EmptyState />
+            )}
+          </div>
+        </div>
+        <div style={sectionStyle}>
+          <div style={titleRow}>
+            <div style={{ width: 4, height: 18, borderRadius: 2, background: '#f59e0b', flexShrink: 0 }} />
+            <h3 style={sectionTitle}>Budget Distribution by Budget Status</h3>
+          </div>
+          <div style={{ borderTop: '1px solid #f1f5f9', margin: '0 -28px 20px', paddingTop: 16, paddingLeft: 28, paddingRight: 28 }}>
+            {budgetStatusData.length > 0 ? (
+              <DonutChart data={budgetStatusData} colors={BUDGET_STATUS_COLORS} formatMoney={formatMoney} />
+            ) : (
+              <EmptyState />
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
 
-function SortableWidget({ id, children }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 10 : 'auto',
+function OverviewCard({ label, value, bg, accent, sub, icon }) {
+  const [hover, setHover] = useState(false)
+  return (
+    <div
+      style={{
+        background: bg,
+        borderRadius: 14,
+        padding: 0,
+        boxShadow: hover ? '0 6px 20px rgba(0,0,0,0.08)' : '0 2px 8px rgba(0,0,0,0.04)',
+        transition: 'all 0.2s',
+        transform: hover ? 'translateY(-2px)' : 'none',
+        overflow: 'hidden',
+        position: 'relative',
+      }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+    >
+      <div style={{ height: 4, background: `linear-gradient(90deg, ${accent}, ${accent}88)` }} />
+      <div style={{ padding: '20px 24px 22px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: accent + '18', color: accent, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {icon}
+          </div>
+        </div>
+        <div style={{ fontSize: 32, fontWeight: 800, color: '#0f172a', lineHeight: 1.1 }}>{value}</div>
+        {sub && <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 4 }}>{sub}</div>}
+      </div>
+    </div>
+  )
+}
+
+function DonutChart({ data, colors, formatMoney }) {
+  const total = data.reduce((s, d) => s + d.value, 0)
+  const getColor = (name, i) => colors[name] || FALLBACK[i % FALLBACK.length]
+  const RADIAN = Math.PI / 180
+  const LABEL_BLOCK_H = 38
+  const SIDE_PAD = 38
+
+  const cachedPositions = useRef(null)
+  const cachedKey = useRef(null)
+
+  const computePositions = useCallback((cx, cy, R, chartH) => {
+    const key = `${cx}-${cy}-${R}-${chartH}-${data.length}-${data.map(d => d.value).join(',')}`
+    if (cachedKey.current === key && cachedPositions.current) return cachedPositions.current
+
+    const raw = data.map((d, i) => {
+      let cumAngle = 0
+      for (let j = 0; j <= i; j++) cumAngle += (data[j].value / total) * 360
+      const sliceAngle = (d.value / total) * 360
+      const midDeg = cumAngle - sliceAngle / 2
+      const midRad = -midDeg * RADIAN
+      const cos = Math.cos(midRad)
+      const sin = Math.sin(midRad)
+      const isRight = cos >= 0
+      return { cos, sin, isRight, idx: i, origY: cy + R * sin }
+    })
+
+    const lefts = raw.filter(p => !p.isRight).sort((a, b) => a.origY - b.origY)
+    const rights = raw.filter(p => p.isRight).sort((a, b) => a.origY - b.origY)
+
+    const spread = (list) => {
+      if (!list.length) return
+      list.forEach(p => { p.ey = p.origY })
+      for (let i = 1; i < list.length; i++) {
+        if (list[i].ey - list[i - 1].ey < LABEL_BLOCK_H) {
+          list[i].ey = list[i - 1].ey + LABEL_BLOCK_H
+        }
+      }
+      const topBound = 10
+      const bottomBound = chartH - 40
+      if (list[list.length - 1].ey > bottomBound) {
+        list[list.length - 1].ey = bottomBound
+        for (let i = list.length - 2; i >= 0; i--) {
+          if (list[i].ey > list[i + 1].ey - LABEL_BLOCK_H) {
+            list[i].ey = list[i + 1].ey - LABEL_BLOCK_H
+          }
+        }
+      }
+      if (list[0].ey < topBound) {
+        list[0].ey = topBound
+        for (let i = 1; i < list.length; i++) {
+          if (list[i].ey < list[i - 1].ey + LABEL_BLOCK_H) {
+            list[i].ey = list[i - 1].ey + LABEL_BLOCK_H
+          }
+        }
+      }
+    }
+
+    spread(lefts)
+    spread(rights)
+
+    const result = new Array(data.length)
+    lefts.forEach(p => { result[p.idx] = p })
+    rights.forEach(p => { result[p.idx] = p })
+
+    cachedKey.current = key
+    cachedPositions.current = result
+    return result
+  }, [data, total])
+
+  const CustomTooltip = ({ active, payload }) => {
+    if (!active || !payload?.length) return null
+    const d = payload[0]
+    const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : 0
+    return (
+      <div style={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+        <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 2, color: '#0f172a' }}>{d.name}</div>
+        <div style={{ fontSize: 12, color: '#64748b' }}>{formatMoney(d.value)} ({pct}%)</div>
+      </div>
+    )
   }
-  return (
-    <div ref={setNodeRef} style={style}>
-      <div {...attributes} {...listeners} style={{ position: 'absolute', top: 12, right: 12, cursor: 'grab', color: 'var(--text-secondary)', opacity: 0.4, zIndex: 1 }}
-        onMouseEnter={e => e.currentTarget.style.opacity = 1}
-        onMouseLeave={e => e.currentTarget.style.opacity = 0.4}
-      >
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="5" cy="4" r="1.2" fill="currentColor"/><circle cx="11" cy="4" r="1.2" fill="currentColor"/><circle cx="5" cy="8" r="1.2" fill="currentColor"/><circle cx="11" cy="8" r="1.2" fill="currentColor"/><circle cx="5" cy="12" r="1.2" fill="currentColor"/><circle cx="11" cy="12" r="1.2" fill="currentColor"/></svg>
-      </div>
-      {children}
-    </div>
-  )
-}
 
-function WidgetCard({ title, children }) {
-  return (
-    <div className="card" style={{ position: 'relative', height: '100%' }}>
-      <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 16, textTransform: 'uppercase', letterSpacing: '0.03em' }}>{title}</h3>
-      {children}
-    </div>
-  )
-}
+  const renderLabel = ({ cx, cy, outerRadius, midAngle, index }) => {
+    const d = data[index]
+    const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : 0
 
-function KPIWidget({ stats, formatMoney }) {
-  const items = [
-    { label: 'Total Projects', value: stats.projects, icon: '📁', color: '#1a56db' },
-    { label: 'Team Members', value: stats.people, icon: '👥', color: '#16a34a' },
-    { label: 'Total Budget', value: formatMoney(stats.totalBudget), icon: '💰', color: '#d97706' },
-    { label: 'Budget Used', value: formatMoney(stats.totalSpent), icon: '📈', color: '#7c3aed' },
-  ]
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-      {items.map((item, i) => (
-        <div key={i} style={{ padding: '16px', borderRadius: 10, background: 'var(--bg)', border: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <span style={{
-              width: 32, height: 32, borderRadius: 8, background: item.color + '15',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16
-            }}>{item.icon}</span>
-          </div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: 'var(--text)' }}>{item.value}</div>
-          <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{item.label}</div>
+    const positions = computePositions(cx, cy, outerRadius, 420)
+    const p = positions[index]
+    if (!p) return null
+
+    const sx = cx + outerRadius * p.cos
+    const sy = cy + outerRadius * p.sin
+    const isR = p.isRight
+    const elbowX = sx + (isR ? SIDE_PAD : -SIDE_PAD)
+    const endX = elbowX
+    const endY = p.ey
+
+    const textX = endX + (isR ? 8 : -8)
+    const anchor = isR ? 'start' : 'end'
+
+    return (
+      <g>
+        <polyline
+          points={`${sx},${sy} ${elbowX},${sy} ${endX},${endY}`}
+          stroke="#b0b8c4"
+          fill="none"
+          strokeWidth={1}
+        />
+        <circle cx={endX} cy={endY} r={2.5} fill="#b0b8c4" />
+        <text x={textX} y={endY} textAnchor={anchor} fill="#334155" fontSize={13} fontWeight={600} dominantBaseline="central">
+          {d.name}
+        </text>
+        <text x={textX} y={endY + 20} textAnchor={anchor} fill="#94a3b8" fontSize={12}>
+          {pct}% ({formatMoney(d.value)})
+        </text>
+      </g>
+    )
+  }
+
+  const CustomLegend = ({ payload }) => (
+    <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '6px 16px', marginTop: 8 }}>
+      {payload.map((entry, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ width: 10, height: 10, borderRadius: 3, background: entry.color, flexShrink: 0 }} />
+          <span style={{ fontSize: 13, color: '#475569' }}>{entry.value}</span>
         </div>
       ))}
     </div>
   )
-}
-
-function MonthlyWidget({ data }) {
-  return (
-    <ResponsiveContainer width="100%" height={240}>
-      <LineChart data={data}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-        <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} />
-        <YAxis stroke="#94a3b8" fontSize={11} />
-        <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: '0 4px 6px rgba(0,0,0,0.07)' }} />
-        <Line type="monotone" dataKey="planned" stroke="#1a56db" strokeWidth={2} dot={{ r: 3 }} name="Planned MD" />
-        <Line type="monotone" dataKey="actual" stroke="#16a34a" strokeWidth={2} dot={{ r: 3 }} name="Actual MD" />
-      </LineChart>
-    </ResponsiveContainer>
-  )
-}
-
-function StatusWidget({ data }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
-      <ResponsiveContainer width="50%" height={200}>
-        <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={45} strokeWidth={0}>
-            {data.map((entry, i) => <Cell key={i} fill={OVERALL_STATUS_COLORS[entry.name] || COLORS[i % COLORS.length]} />)}
-          </Pie>
-          <Tooltip contentStyle={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: '0 4px 6px rgba(0,0,0,0.07)' }} />
-        </PieChart>
-      </ResponsiveContainer>
-      <div style={{ flex: 1 }}>
-        {data.map((d, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
-            <span style={{ width: 10, height: 10, borderRadius: 3, background: OVERALL_STATUS_COLORS[d.name] || COLORS[i % COLORS.length], flexShrink: 0 }} />
-            <span style={{ flex: 1, fontSize: 13 }}>{d.name}</span>
-            <span style={{ fontWeight: 700, fontSize: 14 }}>{d.value}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function UsageWidget({ pct, spent, budget, formatMoney }) {
-  const color = pct > 90 ? '#dc2626' : pct > 70 ? '#d97706' : '#16a34a'
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 200 }}>
-      <div style={{ position: 'relative', width: 140, height: 140 }}>
-        <svg viewBox="0 0 140 140" style={{ transform: 'rotate(-90deg)' }}>
-          <circle cx="70" cy="70" r="60" fill="none" stroke="#e2e8f0" strokeWidth="10" />
-          <circle cx="70" cy="70" r="60" fill="none" stroke={color} strokeWidth="10"
-            strokeDasharray={`${Math.min(pct, 100) * 3.77} 377`} strokeLinecap="round" />
-        </svg>
-        <div style={{
-          position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
-          alignItems: 'center', justifyContent: 'center'
-        }}>
-          <div style={{ fontSize: 28, fontWeight: 800, color }}>{pct}%</div>
-          <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>used</div>
-        </div>
-      </div>
-      <div style={{ marginTop: 12, fontSize: 13, color: 'var(--text-secondary)' }}>
-        {formatMoney(spent)} / {formatMoney(budget)}
-      </div>
-    </div>
-  )
-}
-
-function RecentWidget({ projects, people, formatMoney }) {
-  const overallStatusColor = (os) => ({
-    'On Track': { bg: '#dcfce7', text: '#166534' },
-    'Caution': { bg: '#fef3c7', text: '#92400e' },
-    'Off Track': { bg: '#fef2f2', text: '#991b1b' },
-    'Finished': { bg: '#dbeafe', text: '#1e40af' },
-    'Not Started': { bg: '#f1f5f9', text: '#64748b' },
-  }[os] || { bg: '#f1f5f9', text: '#64748b' })
-
-  const fundingColor = (f) => ({
-    'R&D': { bg: '#dbeafe', text: '#1e40af' },
-    'R&D AI': { bg: '#ede9fe', text: '#5b21b6' },
-    'Vendor Onboarding': { bg: '#fef3c7', text: '#92400e' },
-    'BAU': { bg: '#dcfce7', text: '#166534' },
-  }[f] || { bg: '#f1f5f9', text: '#64748b' })
-
-  const getPersonName = (id) => people.find(p => p.id === id)?.name || '-'
 
   return (
     <div>
-      {projects.length === 0 ? (
-        <div style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: 30, fontSize: 13 }}>No projects yet</div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {projects.map(p => {
-            const oc = overallStatusColor(p.overall_status)
-            const fc = fundingColor(p.funding_type)
-            return (
-              <div key={p.id} style={{
-                padding: '12px 14px', borderRadius: 8, background: 'var(--bg)', border: '1px solid var(--border)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
-                  {p.overall_status && <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600, background: oc.bg, color: oc.text, flexShrink: 0, marginLeft: 8 }}>{p.overall_status}</span>}
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Focal: <strong style={{ color: 'var(--text)' }}>{getPersonName(p.dt_focal_id)}</strong></span>
-                  {p.funding_type && <span style={{ padding: '2px 8px', borderRadius: 6, fontSize: 10, fontWeight: 600, background: fc.bg, color: fc.text }}>{p.funding_type}</span>}
-                  <span style={{ fontSize: 11, color: 'var(--text-secondary)', marginLeft: 'auto' }}>{formatMoney(p.budget)}</span>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+      <ResponsiveContainer width="100%" height={420}>
+        <PieChart margin={{ top: 10, right: 50, bottom: 10, left: 50 }}>
+          <Pie
+            data={data}
+            dataKey="value"
+            nameKey="name"
+            cx="50%"
+            cy="43%"
+            outerRadius="52%"
+            innerRadius="30%"
+            strokeWidth={3}
+            stroke="#fff"
+            label={renderLabel}
+            labelLine={false}
+          >
+            {data.map((entry, i) => (
+              <Cell key={i} fill={getColor(entry.name, i)} />
+            ))}
+          </Pie>
+          <Tooltip content={<CustomTooltip />} />
+          <Legend content={<CustomLegend />} />
+        </PieChart>
+      </ResponsiveContainer>
     </div>
   )
+}
+
+function EmptyState() {
+  return (
+    <div style={{ textAlign: 'center', color: '#94a3b8', padding: 48, fontSize: 13 }}>
+      No project data available yet
+    </div>
+  )
+}
+
+const sectionStyle = {
+  background: '#fff',
+  borderRadius: 14,
+  padding: '24px 28px',
+  marginBottom: 20,
+  boxShadow: '0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04)',
+  border: '1px solid #e2e8f0',
+}
+
+const sectionTitle = {
+  fontSize: 13,
+  fontWeight: 600,
+  color: '#64748b',
+  margin: 0,
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+}
+
+const titleRow = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 10,
+  marginBottom: 16,
 }

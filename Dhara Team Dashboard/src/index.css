@@ -126,3 +126,39 @@ button {
   transform: scale(1.02);
   box-shadow: var(--shadow-md);
 }
+
+.table-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.table-scroll::-webkit-scrollbar {
+  height: 5px;
+}
+
+.table-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.table-scroll::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  border-radius: 4px;
+}
+
+.table-scroll::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.rich-content ul, .rich-content ol {
+  margin: 4px 0;
+  padding-left: 24px;
+}
+.rich-content li {
+  margin: 2px 0;
+}

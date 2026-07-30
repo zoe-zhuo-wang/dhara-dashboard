@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 
 const PHASE_OPTIONS = ['Budget Application', 'BSR / ISR', 'UAT', 'DEV', 'Golive']
@@ -7,6 +7,24 @@ const VETRA_OPTIONS = ['Yes', 'No']
 const OVERALL_STATUS_OPTIONS = ['On Track', 'Caution', 'Off Track', 'Finished', 'Not Started']
 const FUNDING_OPTIONS = ['R&D', 'R&D AI', 'Vendor Onboarding', 'BAU']
 
+const ALL_COLUMNS = [
+  { key: 'name', label: 'Project Name', default: true, width: 200 },
+  { key: 'dt_focal_id', label: 'DT Focal', default: true, width: 200 },
+  { key: 'funding_type', label: 'Funding Type', default: true, width: 140, options: FUNDING_OPTIONS },
+  { key: 'current_phase', label: 'Current Phase', default: true, width: 140, options: PHASE_OPTIONS },
+  { key: 'overall_status', label: 'Overall Status', default: true, width: 140, options: OVERALL_STATUS_OPTIONS },
+  { key: 'budget_status', label: 'Budget Status', default: true, width: 140, options: BUDGET_STATUS_OPTIONS },
+  { key: 'budget', label: 'Budget', default: true, width: 120 },
+  { key: 'description', label: 'Description', default: false, width: 280 },
+  { key: 'start_date', label: 'Start Date', default: false, width: 120 },
+  { key: 'end_date', label: 'End Date', default: false, width: 120 },
+  { key: 'key_updates', label: 'Key Updates', default: false, width: 280 },
+  { key: 'biz_case', label: 'Biz Case', default: false, width: 280 },
+  { key: 'vetra_adopted', label: 'Vetra Adopted', default: false, width: 120, options: VETRA_OPTIONS },
+]
+
+const DEFAULT_VISIBLE = ALL_COLUMNS.filter(c => c.default).map(c => c.key)
+
 export default function Projects() {
   const [projects, setProjects] = useState([])
   const [people, setPeople] = useState([])
@@ -14,12 +32,30 @@ export default function Projects() {
   const [showAddPerson, setShowAddPerson] = useState(false)
   const [editing, setEditing] = useState(null)
   const [search, setSearch] = useState('')
-  const [filter, setFilter] = useState('all')
   const [error, setError] = useState('')
+  const [visibleCols, setVisibleCols] = useState(DEFAULT_VISIBLE)
+  const [colFilters, setColFilters] = useState({})
+  const [showColPicker, setShowColPicker] = useState(false)
+  const [viewingProject, setViewingProject] = useState(null)
+  const [showErrors, setShowErrors] = useState(false)
+  const [successMsg, setSuccessMsg] = useState('')
+  const firstErrorRef = useRef(null)
+  const colPickerRef = useRef(null)
   const emptyForm = { name: '', description: '', current_phase: '', key_updates: '', budget_status: '', biz_case: '', vetra_adopted: '', overall_status: '', budget: '', start_date: '', end_date: '', dt_focal_id: '', funding_type: '' }
   const [form, setForm] = useState(emptyForm)
 
   useEffect(() => { loadAll() }, [])
+
+  useEffect(() => {
+    if (!showColPicker) return
+    const handleClick = (e) => {
+      if (colPickerRef.current && !colPickerRef.current.contains(e.target)) {
+        setShowColPicker(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showColPicker])
 
   const loadAll = async () => {
     const [projRes, peopleRes] = await Promise.all([
@@ -33,6 +69,8 @@ export default function Projects() {
   const openNew = () => {
     setEditing(null)
     setForm({ ...emptyForm, funding_type: '' })
+    setShowErrors(false)
+    setError('')
     setShowModal(true)
   }
 
@@ -46,13 +84,51 @@ export default function Projects() {
       budget: p.budget || '', start_date: p.start_date || '', end_date: p.end_date || '',
       dt_focal_id: p.dt_focal_id || '', funding_type: p.funding_type || ''
     })
+    setShowErrors(false)
+    setError('')
     setShowModal(true)
+  }
+
+  const requiredFields = [
+    { key: 'name', label: 'Project Name' },
+    { key: 'dt_focal_id', label: 'DT Focal' },
+    { key: 'start_date', label: 'Start Date' },
+    { key: 'end_date', label: 'End Date' },
+    { key: 'description', label: 'Description' },
+    { key: 'biz_case', label: 'Biz Case' },
+    { key: 'funding_type', label: 'Funding Type' },
+    { key: 'budget', label: 'Budget' },
+    { key: 'budget_status', label: 'Budget Status' },
+    { key: 'vetra_adopted', label: 'Vetra Adopted' },
+    { key: 'key_updates', label: 'Key Updates' },
+    { key: 'current_phase', label: 'Current Phase' },
+    { key: 'overall_status', label: 'Overall Status' },
+  ]
+
+  const isFormValid = () => requiredFields.every(f => {
+    const v = form[f.key]
+    return v !== undefined && v !== null && String(v).trim() !== ''
+  })
+
+  const isFieldEmpty = (key) => {
+    const v = form[key]
+    return v === undefined || v === null || String(v).trim() === ''
   }
 
   const save = async () => {
     setError('')
-    if (!form.funding_type) {
-      setError('Funding Type is required')
+    const isEditing = !!editing
+    const missing = requiredFields.filter(f => isFieldEmpty(f.key))
+    if (missing.length > 0) {
+      setShowErrors(true)
+      const errMsg = isEditing ? '请填写所有必填字段后再更新项目。' : '请填写所有必填字段后再创建项目。'
+      setError(errMsg)
+      alert(errMsg)
+      setTimeout(() => {
+        if (firstErrorRef.current) {
+          firstErrorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        }
+      }, 100)
       return
     }
     const payload = {
@@ -66,7 +142,7 @@ export default function Projects() {
     }
     try {
       let result
-      if (editing) {
+      if (isEditing) {
         result = await supabase.from('projects').update(payload).eq('id', editing.id)
       } else {
         result = await supabase.from('projects').insert(payload)
@@ -76,7 +152,11 @@ export default function Projects() {
         setError(result.error.message || JSON.stringify(result.error))
         return
       }
+      const msg = isEditing ? '项目更新成功！' : '项目创建成功！'
+      alert(msg)
       setShowModal(false)
+      setSuccessMsg(msg)
+      setTimeout(() => setSuccessMsg(''), 5000)
       loadAll()
     } catch (err) {
       console.error('Save exception:', err)
@@ -90,13 +170,48 @@ export default function Projects() {
     loadAll()
   }
 
-  const getPersonName = (id) => people.find(p => p.id === id)?.name || '-'
+  const getPersonNames = (ids) => (ids || '').split(',').filter(Boolean).map(id => people.find(p => p.id === id)?.name).filter(Boolean).join(', ') || '-'
+
+  const toggleFocal = (id) => {
+    const current = (form.dt_focal_id || '').split(',').filter(Boolean)
+    const next = current.includes(id) ? current.filter(x => x !== id) : [...current, id]
+    setForm({ ...form, dt_focal_id: next.join(',') })
+  }
+
+  const toggleCol = (key) => {
+    setVisibleCols(prev => prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key])
+  }
+
+  const setFilter = (key, val) => {
+    setColFilters(prev => {
+      const next = { ...prev }
+      if (!val || val === 'all') delete next[key]
+      else next[key] = val
+      return next
+    })
+  }
 
   const filtered = projects.filter(p => {
-    if (filter !== 'all' && p.overall_status !== filter) return false
     if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false
+    for (const [key, val] of Object.entries(colFilters)) {
+      if (key === 'dt_focal_id') {
+        if (!val) continue
+        const projectNames = (p[key] || '').split(',').filter(Boolean).map(id => people.find(pr => pr.id === id)?.name).filter(Boolean)
+        if (!projectNames.includes(val)) return false
+        continue
+      }
+      const cellVal = (p[key] || '')
+      if (cellVal !== val) return false
+    }
     return true
   })
+
+  const stripHtml = (html) => {
+    if (!html) return ''
+    const div = document.createElement('div')
+    div.innerHTML = html
+    return div.textContent || div.innerText || ''
+  }
 
   const formatMoney = (n) => '$' + (n || 0).toLocaleString()
 
@@ -107,171 +222,247 @@ export default function Projects() {
     'BAU': { bg: '#dcfce7', text: '#166534' },
   }[f] || { bg: '#f1f5f9', text: '#64748b' })
 
+  const phaseColor = (ph) => ({
+    'Budget Application': { bg: '#dbeafe', text: '#1e40af' },
+    'BSR / ISR': { bg: '#ede9fe', text: '#5b21b6' },
+    'UAT': { bg: '#fef3c7', text: '#92400e' },
+    'DEV': { bg: '#dcfce7', text: '#166534' },
+    'Golive': { bg: '#d1fae5', text: '#065f46' },
+  }[ph] || { bg: '#f1f5f9', text: '#64748b' })
+
+  const overallColor = (os) => ({
+    'On Track': { bg: '#dcfce7', text: '#166534' },
+    'Caution': { bg: '#fef3c7', text: '#92400e' },
+    'Off Track': { bg: '#fef2f2', text: '#991b1b' },
+    'Finished': { bg: '#dbeafe', text: '#1e40af' },
+    'Not Started': { bg: '#f1f5f9', text: '#64748b' },
+  }[os] || { bg: '#f1f5f9', text: '#64748b' })
+
+  const budgetStatusColor = (bs) => ({
+    'Draft': { bg: '#f1f5f9', text: '#64748b' },
+    'Ongoing': { bg: '#fef3c7', text: '#92400e' },
+    'Approved': { bg: '#dcfce7', text: '#166534' },
+  }[bs] || { bg: '#f1f5f9', text: '#64748b' })
+
+  const cellTextStyle = { fontSize: 13, lineHeight: 1.4, maxHeight: 80, overflowY: 'auto', wordBreak: 'break-word' }
+
+  const renderCell = (col, p) => {
+    switch (col.key) {
+      case 'name':
+        return <span style={{ fontWeight: 600, color: 'var(--text)' }}>{p.name}</span>
+      case 'description':
+        return <div style={cellTextStyle}>{p.description || '-'}</div>
+      case 'dt_focal_id':
+        return getPersonNames(p.dt_focal_id)
+      case 'funding_type':
+        return p.funding_type ? <Badge bg={fundingStyle(p.funding_type).bg} text={fundingStyle(p.funding_type).text}>{p.funding_type}</Badge> : '-'
+      case 'current_phase':
+        return p.current_phase ? <Badge bg={phaseColor(p.current_phase).bg} text={phaseColor(p.current_phase).text}>{p.current_phase}</Badge> : '-'
+      case 'overall_status':
+        return p.overall_status ? <Badge bg={overallColor(p.overall_status).bg} text={overallColor(p.overall_status).text}>{p.overall_status}</Badge> : '-'
+      case 'budget_status':
+        return p.budget_status ? <Badge bg={budgetStatusColor(p.budget_status).bg} text={budgetStatusColor(p.budget_status).text}>{p.budget_status}</Badge> : '-'
+      case 'budget':
+        return <span style={{ fontWeight: 600 }}>{formatMoney(p.budget)}</span>
+      case 'start_date':
+        return p.start_date || '-'
+      case 'end_date':
+        return p.end_date || '-'
+      case 'key_updates':
+        return <div style={cellTextStyle}>{stripHtml(p.key_updates) || '-'}</div>
+      case 'biz_case':
+        return <div style={cellTextStyle}>{p.biz_case || '-'}</div>
+      case 'vetra_adopted':
+        return p.vetra_adopted || '-'
+      default:
+        return p[col.key] || '-'
+    }
+  }
+
+  const getFilterValues = (col) => {
+    if (col.options) return col.options
+    if (col.key === 'dt_focal_id') return people.map(p => p.name).sort()
+    return null
+  }
+
+  const visibleColumns = ALL_COLUMNS.filter(c => visibleCols.includes(c.key))
+  const totalCols = visibleColumns.length + 1
+
+  const exportExcel = async () => {
+    const XLSX = await import('xlsx')
+    const rows = filtered.map(p => {
+      const row = {}
+      ALL_COLUMNS.forEach(c => { row[c.label] = c.key === 'dt_focal_id' ? getPersonNames(p[c.key]) : p[c.key] ?? '' })
+      return row
+    })
+    const ws = XLSX.utils.json_to_sheet(rows)
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Projects')
+    const now = new Date()
+    const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}${String(now.getSeconds()).padStart(2,'0')}`
+    XLSX.writeFile(wb, `projects_${ts}.xlsx`)
+  }
+
   return (
     <div>
+      {successMsg && (
+        <div style={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 2000, padding: '14px 24px', borderRadius: 10, background: '#16a34a', color: 'white', fontSize: 14, fontWeight: 600, boxShadow: '0 8px 30px rgba(22,163,74,0.3)', display: 'flex', alignItems: 'center', gap: 10, animation: 'slideDown 0.3s ease' }}>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="white" fillOpacity="0.2"/><path d="M6 10l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          {successMsg}
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px' }}>Projects</h2>
           <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 13 }}>{filtered.length} projects</p>
         </div>
-        <button className="btn-primary" onClick={openNew}>+ New Project</button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn-secondary" onClick={exportExcel} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 10v2a1 1 0 001 1h8a1 1 0 001-1v-2M7 2v8M4 7l3 3 3-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Export Excel
+          </button>
+          <button className="btn-primary" onClick={openNew}>+ New Project</button>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center' }}>
         <input type="text" placeholder="Search projects..." value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, maxWidth: 320 }} />
-        <select value={filter} onChange={e => setFilter(e.target.value)}>
-          <option value="all">All Status</option>
-          {OVERALL_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
+        <div style={{ position: 'relative' }} ref={colPickerRef}>
+          <button className="btn-secondary btn-sm" onClick={() => setShowColPicker(!showColPicker)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="4" height="4" rx="1" stroke="currentColor" strokeWidth="1.2"/><rect x="9" y="1" width="4" height="4" rx="1" stroke="currentColor" strokeWidth="1.2"/><rect x="1" y="9" width="4" height="4" rx="1" stroke="currentColor" strokeWidth="1.2"/><rect x="9" y="9" width="4" height="4" rx="1" stroke="currentColor" strokeWidth="1.2"/></svg>
+            Columns
+          </button>
+          {showColPicker && (
+            <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 10, padding: 14, zIndex: 100, minWidth: 220, boxShadow: '0 8px 30px rgba(0,0,0,0.12)' }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Toggle Columns</div>
+              {ALL_COLUMNS.map(col => (
+                <label key={col.key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 4px', cursor: 'pointer', fontSize: 13, borderRadius: 4, color: 'var(--text)' }}>
+                  <input
+                    type="checkbox"
+                    checked={visibleCols.includes(col.key)}
+                    onChange={() => toggleCol(col.key)}
+                    style={{ width: 15, height: 15, accentColor: 'var(--primary)' }}
+                  />
+                  {col.label}
+                </label>
+              ))}
+              <div style={{ borderTop: '1px solid var(--border)', marginTop: 8, paddingTop: 8, display: 'flex', gap: 6 }}>
+                <button className="btn-secondary btn-sm" style={{ flex: 1, fontSize: 11, padding: '4px 0' }} onClick={() => setVisibleCols(ALL_COLUMNS.map(c => c.key))}>All</button>
+                <button className="btn-secondary btn-sm" style={{ flex: 1, fontSize: 11, padding: '4px 0' }} onClick={() => setVisibleCols(DEFAULT_VISIBLE)}>Reset</button>
+                <button className="btn-secondary btn-sm" style={{ flex: 1, fontSize: 11, padding: '4px 0' }} onClick={() => setVisibleCols([])}>None</button>
+              </div>
+              <button className="btn-primary btn-sm" style={{ width: '100%', marginTop: 8, fontSize: 12, padding: '6px 0' }} onClick={() => setShowColPicker(false)}>Done</button>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--border)' }}>
-              {['Name', 'DT Focal', 'Funding Type', 'Phase', 'Overall Status', 'Budget Status', 'Budget', 'Actions'].map(h => (
-                <th key={h} style={thStyle}>{h}</th>
+      <div className="card" style={{ padding: 0, overflow: 'visible' }}>
+        <div className="table-scroll">
+          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+            <colgroup>
+              {ALL_COLUMNS.map(col => (
+                <col key={col.key} style={{ width: visibleCols.includes(col.key) ? col.width : 0 }} />
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(p => {
-              const phaseColor = (ph) => ({
-                'Budget Application': { bg: '#dbeafe', text: '#1e40af' },
-                'BSR / ISR': { bg: '#ede9fe', text: '#5b21b6' },
-                'UAT': { bg: '#fef3c7', text: '#92400e' },
-                'DEV': { bg: '#dcfce7', text: '#166534' },
-                'Golive': { bg: '#d1fae5', text: '#065f46' },
-              }[ph] || { bg: '#f1f5f9', text: '#64748b' })
-
-              const overallColor = (os) => ({
-                'On Track': { bg: '#dcfce7', text: '#166534' },
-                'Caution': { bg: '#fef3c7', text: '#92400e' },
-                'Off Track': { bg: '#fef2f2', text: '#991b1b' },
-                'Finished': { bg: '#dbeafe', text: '#1e40af' },
-                'Not Started': { bg: '#f1f5f9', text: '#64748b' },
-              }[os] || { bg: '#f1f5f9', text: '#64748b' })
-
-              const budgetStatusColor = (bs) => ({
-                'Draft': { bg: '#f1f5f9', text: '#64748b' },
-                'Ongoing': { bg: '#fef3c7', text: '#92400e' },
-                'Approved': { bg: '#dcfce7', text: '#166534' },
-              }[bs] || { bg: '#f1f5f9', text: '#64748b' })
-
-              const pc = phaseColor(p.current_phase)
-              const oc = overallColor(p.overall_status)
-              const bc = budgetStatusColor(p.budget_status)
-              const fc = fundingStyle(p.funding_type)
-              return (
-                <tr key={p.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={tdStyle}>
-                    <div style={{ fontWeight: 600, color: 'var(--text)' }}>{p.name}</div>
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{p.description?.slice(0, 40)}</div>
-                  </td>
-                  <td style={tdStyle}>{getPersonName(p.dt_focal_id)}</td>
-                  <td style={tdStyle}>{p.funding_type ? <Badge bg={fc.bg} text={fc.text}>{p.funding_type}</Badge> : '-'}</td>
-                  <td style={tdStyle}>{p.current_phase ? <Badge bg={pc.bg} text={pc.text}>{p.current_phase}</Badge> : '-'}</td>
-                  <td style={tdStyle}>{p.overall_status ? <Badge bg={oc.bg} text={oc.text}>{p.overall_status}</Badge> : '-'}</td>
-                  <td style={tdStyle}>{p.budget_status ? <Badge bg={bc.bg} text={bc.text}>{p.budget_status}</Badge> : '-'}</td>
-                  <td style={{ ...tdStyle, fontWeight: 600 }}>{formatMoney(p.budget)}</td>
-                  <td style={tdStyle}>
-                    <button onClick={() => openEdit(p)} className="btn-secondary btn-sm" style={{ marginRight: 6 }}>Edit</button>
+              <col style={{ width: 180 }} />
+            </colgroup>
+            <thead>
+              <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                {ALL_COLUMNS.map(col => {
+                  const isVisible = visibleCols.includes(col.key)
+                  if (!isVisible) return <th key={col.key} style={{ ...thStyle, padding: 0, border: 'none' }}></th>
+                  const filterVals = getFilterValues(col)
+                  const currentFilter = colFilters[col.key] || 'all'
+                  return <th key={col.key} style={{ ...thStyle, minWidth: col.width, width: col.width }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        <span>{col.label}</span>
+                        {filterVals && (
+                          <select
+                            value={currentFilter}
+                            onChange={e => setFilter(col.key, e.target.value)}
+                            onClick={e => e.stopPropagation()}
+                            style={{ fontSize: 11, padding: '2px 4px', borderRadius: 4, border: '1px solid var(--border)', background: currentFilter !== 'all' ? '#eff6ff' : 'var(--bg-white)', color: currentFilter !== 'all' ? 'var(--primary)' : 'var(--text-secondary)', maxWidth: 120, cursor: 'pointer' }}
+                          >
+                            <option value="all">All</option>
+                            {filterVals.map(v => <option key={v} value={v}>{v}</option>)}
+                          </select>
+                        )}
+                      </div>
+                    </th>
+                })}
+                <th style={{ ...thStyle, position: 'sticky', right: 0, background: 'var(--bg)', zIndex: 3, textAlign: 'center', minWidth: 180, borderLeft: '1px solid var(--border)' }}>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(p => (
+                <tr key={p.id} style={{ borderBottom: '1px solid #e8ecf1' }}>
+                  {ALL_COLUMNS.map(col => {
+                    const isVisible = visibleCols.includes(col.key)
+                    if (!isVisible) return <td key={col.key} style={{ padding: 0, border: 'none' }}></td>
+                    return <td key={col.key} style={tdStyle}>{renderCell(col, p)}</td>
+                  })}
+                  <td style={{ ...tdStyle, position: 'sticky', right: 0, background: 'var(--bg-card)', zIndex: 2, whiteSpace: 'nowrap', textAlign: 'center', borderLeft: '1px solid var(--border)' }}>
+                    <button onClick={() => setViewingProject(p)} className="btn-secondary btn-sm" style={{ marginRight: 4 }}>View</button>
+                    <button onClick={() => openEdit(p)} className="btn-secondary btn-sm" style={{ marginRight: 4 }}>Edit</button>
                     <button onClick={() => remove(p.id)} className="btn-danger btn-sm">Delete</button>
                   </td>
                 </tr>
-              )
-            })}
-            {filtered.length === 0 && (
-              <tr><td colSpan={8} style={{ ...tdStyle, textAlign: 'center', color: 'var(--text-secondary)', padding: 48 }}>No projects found. Create one to get started.</td></tr>
-            )}
-          </tbody>
-        </table>
+              ))}
+              {filtered.length === 0 && (
+                <tr><td colSpan={ALL_COLUMNS.length + 1} style={{ ...tdStyle, textAlign: 'center', color: 'var(--text-secondary)', padding: 48 }}>No projects found. Create one to get started.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {showModal && (
         <div style={modalOverlay} onClick={() => setShowModal(false)}>
           <div className="card" style={{ width: '100%', maxWidth: 540, maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={e => e.stopPropagation()}>
             <h3 style={{ fontSize: 18, fontWeight: 700, padding: '24px 32px 16px', margin: 0, borderBottom: '1px solid var(--border)', flexShrink: 0 }}>{editing ? 'Edit Project' : 'New Project'}</h3>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 32px' }}>
-              <div style={{ display: 'grid', gap: 16 }}>
-                <Field label="Project Name *">
-                  <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={{ width: '100%' }} placeholder="Enter project name" />
-                </Field>
-                <Field label="DT Focal *">
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <select value={form.dt_focal_id} onChange={e => setForm({ ...form, dt_focal_id: e.target.value })} style={{ flex: 1 }}>
-                      <option value="">-- Select --</option>
-                      {people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                    <button type="button" onClick={() => setShowAddPerson(true)} style={{ padding: '8px 12px', borderRadius: 8, background: 'var(--primary)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600, whiteSpace: 'nowrap' }}>+ Add</button>
-                  </div>
-                </Field>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <Field label="Start Date">
-                    <input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} style={{ width: '100%' }} />
-                  </Field>
-                  <Field label="End Date">
-                    <input type="date" value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} style={{ width: '100%' }} />
-                  </Field>
-                </div>
-                <Field label="Description">
-                  <textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} style={{ width: '100%', height: 80, resize: 'none' }} placeholder="Brief description" />
-                </Field>
-                <Field label="Biz Case">
-                  <textarea value={form.biz_case} onChange={e => setForm({ ...form, biz_case: e.target.value })} rows={3} style={{ width: '100%', height: 80, resize: 'none' }} placeholder="Reference or description" />
-                </Field>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <Field label="Funding Type *">
-                    <select value={form.funding_type} onChange={e => setForm({ ...form, funding_type: e.target.value })} style={{ width: '100%' }}>
-                      <option value="">-- Select Funding Type --</option>
-                      {FUNDING_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
-                    </select>
-                  </Field>
-                  <Field label="Budget ($)">
-                    <input type="number" value={form.budget} onChange={e => setForm({ ...form, budget: e.target.value })} style={{ width: '100%' }} placeholder="0" />
-                  </Field>
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <Field label="Budget Status">
-                    <select value={form.budget_status} onChange={e => setForm({ ...form, budget_status: e.target.value })} style={{ width: '100%' }}>
-                      <option value="">-- Select --</option>
-                      {BUDGET_STATUS_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}
-                    </select>
-                  </Field>
-                  <Field label="Vetra Adopted">
-                    <select value={form.vetra_adopted} onChange={e => setForm({ ...form, vetra_adopted: e.target.value })} style={{ width: '100%' }}>
-                      <option value="">-- Select --</option>
-                      {VETRA_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
-                    </select>
-                  </Field>
-                </div>
-                <Field label="Key Updates">
-                  <textarea value={form.key_updates} onChange={e => setForm({ ...form, key_updates: e.target.value })} rows={3} style={{ width: '100%', height: 80, resize: 'none' }} placeholder="Latest updates" />
-                </Field>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                  <Field label="Current Phase">
-                    <select value={form.current_phase} onChange={e => setForm({ ...form, current_phase: e.target.value })} style={{ width: '100%' }}>
-                      <option value="">-- Select Phase --</option>
-                      {PHASE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </Field>
-                  <Field label="Overall Status">
-                    <select value={form.overall_status} onChange={e => setForm({ ...form, overall_status: e.target.value })} style={{ width: '100%' }}>
-                      <option value="">-- Select Status --</option>
-                      {OVERALL_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </Field>
-                </div>
-              </div>
-            </div>
             {error && (
-              <div style={{ margin: '0 32px', padding: '10px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 13 }}>
+              <div style={{ margin: '0 32px', marginTop: 16, padding: '10px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 13, flexShrink: 0 }}>
                 {error}
               </div>
             )}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 32px' }}>
+              <div style={{ display: 'grid', gap: 16 }}>
+                {(() => {
+                  let firstErr = true
+                  const refIfFirst = (key) => {
+                    if (showErrors && isFieldEmpty(key) && firstErr) { firstErr = false; return firstErrorRef }
+                    return undefined
+                  }
+                  const errIfEmpty = (key) => showErrors && isFieldEmpty(key)
+                  return <>
+                    <Field label="Project Name *" error={errIfEmpty('name')}><div ref={refIfFirst('name')}><input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={{ width: '100%' }} placeholder="Enter project name" /></div></Field>
+                    <Field label="DT Focal *" error={errIfEmpty('dt_focal_id')}><div><div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}><span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Select one or more:</span><button type="button" onClick={() => setShowAddPerson(true)} style={{ padding: '3px 10px', borderRadius: 6, background: 'var(--primary)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>+ Add Person</button></div><div ref={refIfFirst('dt_focal_id')} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, maxHeight: 140, overflowY: 'auto', padding: '4px 0' }}>{people.map(p => { const sel = (form.dt_focal_id || '').split(',').includes(p.id); return <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 6, fontSize: 12, cursor: 'pointer', background: sel ? '#dbeafe' : '#f1f5f9', border: sel ? '1px solid #93c5fd' : '1px solid transparent', color: sel ? '#1e40af' : 'var(--text)', userSelect: 'none' }}><input type="checkbox" checked={sel} onChange={() => toggleFocal(p.id)} style={{ width: 14, height: 14, accentColor: 'var(--primary)', margin: 0 }} />{p.name}</label> })}</div></div></Field>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      <Field label="Start Date *" error={errIfEmpty('start_date')}><div ref={refIfFirst('start_date')}><input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} style={{ width: '100%' }} /></div></Field>
+                      <Field label="End Date *" error={errIfEmpty('end_date')}><div ref={refIfFirst('end_date')}><input type="date" value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} style={{ width: '100%' }} /></div></Field>
+                    </div>
+                    <Field label="Description *" error={errIfEmpty('description')}><div ref={refIfFirst('description')}><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} style={{ width: '100%', height: 80, resize: 'none' }} placeholder="Brief description" /></div></Field>
+                    <Field label="Biz Case *" error={errIfEmpty('biz_case')}><div ref={refIfFirst('biz_case')}><textarea value={form.biz_case} onChange={e => setForm({ ...form, biz_case: e.target.value })} rows={3} style={{ width: '100%', height: 80, resize: 'none' }} placeholder="Reference or description" /></div></Field>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      <Field label="Funding Type *" error={errIfEmpty('funding_type')}><div ref={refIfFirst('funding_type')}><select value={form.funding_type} onChange={e => setForm({ ...form, funding_type: e.target.value })} style={{ width: '100%' }}><option value="">-- Select Funding Type --</option>{FUNDING_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}</select></div></Field>
+                      <Field label="Budget ($) *" error={errIfEmpty('budget')}><div ref={refIfFirst('budget')}><input type="number" value={form.budget} onChange={e => setForm({ ...form, budget: e.target.value })} style={{ width: '100%' }} placeholder="0" /></div></Field>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      <Field label="Budget Status *" error={errIfEmpty('budget_status')}><div ref={refIfFirst('budget_status')}><select value={form.budget_status} onChange={e => setForm({ ...form, budget_status: e.target.value })} style={{ width: '100%' }}><option value="">-- Select --</option>{BUDGET_STATUS_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}</select></div></Field>
+                      <Field label="Vetra Adopted *" error={errIfEmpty('vetra_adopted')}><div ref={refIfFirst('vetra_adopted')}><select value={form.vetra_adopted} onChange={e => setForm({ ...form, vetra_adopted: e.target.value })} style={{ width: '100%' }}><option value="">-- Select --</option>{VETRA_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}</select></div></Field>
+                    </div>
+                    <Field label="Key Updates *" error={errIfEmpty('key_updates')}><div ref={refIfFirst('key_updates')}><textarea value={form.key_updates} onChange={e => setForm({ ...form, key_updates: e.target.value })} rows={3} style={{ width: '100%', height: 80, resize: 'none' }} placeholder="Latest updates" /></div></Field>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      <Field label="Current Phase *" error={errIfEmpty('current_phase')}><div ref={refIfFirst('current_phase')}><select value={form.current_phase} onChange={e => setForm({ ...form, current_phase: e.target.value })} style={{ width: '100%' }}><option value="">-- Select Phase --</option>{PHASE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}</select></div></Field>
+                      <Field label="Overall Status *" error={errIfEmpty('overall_status')}><div ref={refIfFirst('overall_status')}><select value={form.overall_status} onChange={e => setForm({ ...form, overall_status: e.target.value })} style={{ width: '100%' }}><option value="">-- Select Status --</option>{OVERALL_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}</select></div></Field>
+                    </div>
+                  </>
+                })()}
+              </div>
+            </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, padding: '16px 32px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
               <button className="btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>
-              <button className="btn-primary" onClick={save} disabled={!form.name.trim() || !form.funding_type}>{editing ? 'Update Project' : 'Create Project'}</button>
+              <button className="btn-primary" onClick={save}>{editing ? 'Update Project' : 'Create Project'}</button>
             </div>
           </div>
         </div>
@@ -282,10 +473,14 @@ export default function Projects() {
           onClose={() => setShowAddPerson(false)}
           onAdded={(newPerson) => {
             setPeople(prev => [...prev, newPerson].sort((a, b) => a.name.localeCompare(b.name)))
-            setForm(prev => ({ ...prev, dt_focal_id: newPerson.id }))
+            setForm(prev => ({ ...prev, dt_focal_id: (prev.dt_focal_id ? prev.dt_focal_id + ',' : '') + newPerson.id }))
             setShowAddPerson(false)
           }}
         />
+      )}
+
+      {viewingProject && (
+        <ProjectViewModal project={viewingProject} people={people} onClose={() => setViewingProject(null)} />
       )}
     </div>
   )
@@ -303,9 +498,15 @@ function AddPersonModal({ onClose, onAdded }) {
     setSaving(true)
     setError('')
     try {
+      const { data: existing } = await supabase.from('people').select('id, name').ilike('email', email.trim().toLowerCase())
+      if (existing && existing.length > 0) {
+        setError(`Email already used by ${existing.map(e => e.name).join(', ')}`)
+        setSaving(false)
+        return
+      }
       const { data, error: err } = await supabase.from('people').insert({
         name: name.trim(),
-        email: email.trim(),
+        email: email.trim().toLowerCase(),
         role: 'Other',
         team_group: team,
         is_active: true
@@ -351,15 +552,236 @@ function AddPersonModal({ onClose, onAdded }) {
   )
 }
 
-function Field({ label, children }) {
-  return <div><label style={labelStyle}>{label}</label>{children}</div>
+function MembersModal({ project, people, onClose, onUpdated }) {
+  const [members, setMembers] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [adding, setAdding] = useState(false)
+  const [selectedPerson, setSelectedPerson] = useState('')
+  const [allocPct, setAllocPct] = useState(100)
+
+  useEffect(() => { loadMembers() }, [])
+
+  const loadMembers = async () => {
+    setLoading(true)
+    const { data } = await supabase
+      .from('project_members')
+      .select('*')
+      .eq('project_id', project.id)
+    setMembers(data || [])
+    setLoading(false)
+  }
+
+  const addMember = async () => {
+    if (!selectedPerson) return
+    const { error } = await supabase.from('project_members').insert({
+      project_id: project.id,
+      person_id: selectedPerson,
+      allocation_pct: parseInt(allocPct) || 100
+    })
+    if (!error) {
+      setSelectedPerson('')
+      setAllocPct(100)
+      setAdding(false)
+      loadMembers()
+    }
+  }
+
+  const removeMember = async (id) => {
+    if (!confirm('Remove this member from the project?')) return
+    await supabase.from('project_members').delete().eq('id', id)
+    loadMembers()
+  }
+
+  const updateAlloc = async (id, pct) => {
+    await supabase.from('project_members').update({ allocation_pct: parseInt(pct) || 0 }).eq('id', id)
+    loadMembers()
+  }
+
+  const getPerson = (id) => people.find(p => p.id === id)
+  const memberPersonIds = members.map(m => m.person_id)
+  const availablePeople = people.filter(p => p.is_active && !memberPersonIds.includes(p.id))
+
+  return (
+    <div style={modalOverlay} onClick={onClose}>
+      <div className="card" style={{ width: '100%', maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+          <div>
+            <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Team Members</h3>
+            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '4px 0 0' }}>{project.name}</p>
+          </div>
+          <button onClick={onClose} style={{ background: 'none', color: 'var(--text-secondary)', padding: 4 }}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+        </div>
+
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>Loading...</div>
+          ) : members.length === 0 && !adding ? (
+            <div style={{ textAlign: 'center', padding: 40 }}>
+              <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>No members assigned yet</div>
+              <button className="btn-primary btn-sm" onClick={() => setAdding(true)}>+ Add First Member</button>
+            </div>
+          ) : (
+            <>
+              {members.map(m => {
+                const person = getPerson(m.person_id)
+                return (
+                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{
+                        width: 34, height: 34, borderRadius: 8, background: '#eff6ff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontWeight: 600, fontSize: 13, color: 'var(--primary)', flexShrink: 0
+                      }}>
+                        {(person?.name || '?')[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 600 }}>{person?.name || 'Unknown'}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{person?.email || ''}</div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <input
+                          type="number"
+                          min="0" max="100"
+                          value={m.allocation_pct}
+                          onChange={e => updateAlloc(m.id, e.target.value)}
+                          style={{ width: 56, padding: '4px 6px', fontSize: 12, textAlign: 'center', borderRadius: 6, border: '1px solid var(--border)' }}
+                        />
+                        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>%</span>
+                      </div>
+                      <button onClick={() => removeMember(m.id)} style={{ background: 'none', color: '#dc2626', padding: 4, borderRadius: 4 }}>
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+
+              {adding ? (
+                <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: 'var(--bg)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <select
+                    value={selectedPerson}
+                    onChange={e => setSelectedPerson(e.target.value)}
+                    style={{ flex: 1, minWidth: 150, padding: '8px 10px', fontSize: 13 }}
+                  >
+                    <option value="">-- Select person --</option>
+                    {availablePeople.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <input
+                      type="number" min="0" max="100"
+                      value={allocPct}
+                      onChange={e => setAllocPct(e.target.value)}
+                      style={{ width: 56, padding: '8px 6px', fontSize: 13, textAlign: 'center', borderRadius: 6, border: '1px solid var(--border)' }}
+                    />
+                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>%</span>
+                  </div>
+                  <button className="btn-primary btn-sm" onClick={addMember} disabled={!selectedPerson}>Add</button>
+                  <button className="btn-secondary btn-sm" onClick={() => { setAdding(false); setSelectedPerson('') }}>Cancel</button>
+                </div>
+              ) : (
+                availablePeople.length > 0 && (
+                  <button
+                    className="btn-secondary btn-sm"
+                    onClick={() => setAdding(true)}
+                    style={{ marginTop: 12, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                    Add Member
+                  </button>
+                )
+              )}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProjectViewModal({ project, people, onClose }) {
+  const getPersonNames = (ids) => (ids || '').split(',').filter(Boolean).map(id => people.find(p => p.id === id)?.name).filter(Boolean).join(', ') || '-'
+  const formatMoney = (n) => '$' + (n || 0).toLocaleString()
+  const stripHtml = (html) => {
+    if (!html) return ''
+    const div = document.createElement('div')
+    div.innerHTML = html
+    return div.textContent || div.innerText || ''
+  }
+
+  const fieldMap = {
+    name: { label: 'Project Name', value: project.name },
+    dt_focal_id: { label: 'DT Focal', value: getPersonNames(project.dt_focal_id) },
+    funding_type: { label: 'Funding Type', value: project.funding_type || '-' },
+    current_phase: { label: 'Current Phase', value: project.current_phase || '-' },
+    overall_status: { label: 'Overall Status', value: project.overall_status || '-' },
+    budget_status: { label: 'Budget Status', value: project.budget_status || '-' },
+    budget: { label: 'Budget', value: formatMoney(project.budget) },
+    description: { label: 'Description', value: project.description || '-', long: true },
+    start_date: { label: 'Start Date', value: project.start_date || '-' },
+    end_date: { label: 'End Date', value: project.end_date || '-' },
+    key_updates: { label: 'Key Updates', value: stripHtml(project.key_updates) || '-', long: true },
+    biz_case: { label: 'Biz Case', value: project.biz_case || '-', long: true },
+    vetra_adopted: { label: 'Vetra Adopted', value: project.vetra_adopted || '-' },
+  }
+
+  return (
+    <div style={modalOverlay} onClick={onClose}>
+      <div className="card" style={{ width: '100%', maxWidth: 600, maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={e => e.stopPropagation()}>
+        <div style={{ padding: '20px 28px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+          <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{project.name}</h3>
+          <button onClick={onClose} style={{ background: 'none', color: 'var(--text-secondary)', padding: 4 }}>
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          </button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px' }}>
+          <div style={{ display: 'grid', gap: 0 }}>
+            {ALL_COLUMNS.map(col => {
+              const field = fieldMap[col.key]
+              if (!field) return null
+              return (
+                <div key={col.key} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{field.label}</div>
+                  {field.long ? (
+                    <div style={{ fontSize: 14, lineHeight: 1.6, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{field.value}</div>
+                  ) : (
+                    <div style={{ fontSize: 14 }}>{field.value}</div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+        <div style={{ padding: '14px 28px', borderTop: '1px solid var(--border)', flexShrink: 0, textAlign: 'right' }}>
+          <button className="btn-secondary" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Field({ label, children, error }) {
+  return (
+    <div>
+      <label style={labelStyle}>{label}</label>
+      {error ? (
+        <div style={{ border: '1.5px solid #ef4444', borderRadius: 8, padding: 2 }}>
+          {children}
+        </div>
+      ) : children}
+      {error && <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: '#ef4444', fontWeight: 500 }}>This field is required</span>}
+    </div>
+  )
 }
 
 function Badge({ bg, text, children }) {
-  return <span style={{ padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, background: bg, color: text }}>{children}</span>
+  return <span style={{ display: 'inline-block', minWidth: 90, padding: '5px 12px', borderRadius: 6, fontSize: 12, fontWeight: 600, background: bg, color: text, textAlign: 'center', whiteSpace: 'nowrap' }}>{children}</span>
 }
 
-const thStyle = { padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', background: 'var(--bg)' }
-const tdStyle = { padding: '14px 16px', fontSize: 14 }
+const thStyle = { padding: '12px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em', background: 'var(--bg)', whiteSpace: 'nowrap' }
+const tdStyle = { padding: '14px 16px', fontSize: 14, verticalAlign: 'top', height: 60 }
 const modalOverlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }
 const labelStyle = { display: 'block', marginBottom: 5, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }

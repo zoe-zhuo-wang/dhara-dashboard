@@ -8,7 +8,9 @@ export default function People() {
   const [showModal, setShowModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [search, setSearch] = useState('')
+  const [teamFilter, setTeamFilter] = useState('all')
   const [form, setForm] = useState({ name: '', email: '', role: 'Developer', team_group: 'Regular Team', daily_rate: '', is_active: true, skills: '' })
+  const [error, setError] = useState('')
 
   useEffect(() => { loadPeople() }, [])
 
@@ -20,6 +22,7 @@ export default function People() {
   const openNew = () => {
     setEditing(null)
     setForm({ name: '', email: '', role: 'Developer', team_group: 'Regular Team', daily_rate: '', is_active: true, skills: '' })
+    setError('')
     setShowModal(true)
   }
 
@@ -29,12 +32,24 @@ export default function People() {
       name: p.name, email: p.email || '', role: p.role, team_group: p.team_group,
       daily_rate: p.daily_rate || '', is_active: p.is_active, skills: (p.skills || []).join(', ')
     })
+    setError('')
     setShowModal(true)
   }
 
   const save = async () => {
+    setError('')
+    const email = form.email.trim().toLowerCase()
+    if (!email) { setError('Email is required'); return }
+    const { data: existing } = await supabase.from('people').select('id, name').ilike('email', email)
+    if (existing && existing.length > 0) {
+      const conflict = editing ? existing.filter(e => e.id !== editing.id) : existing
+      if (conflict.length > 0) {
+        setError(`Email already used by ${conflict.map(e => e.name).join(', ')}`)
+        return
+      }
+    }
     const payload = {
-      ...form,
+      ...form, email,
       daily_rate: parseFloat(form.daily_rate) || 0,
       skills: form.skills.split(',').map(s => s.trim()).filter(Boolean)
     }
@@ -53,13 +68,18 @@ export default function People() {
     loadPeople()
   }
 
+  const normalize = (tg) => tg === 'General' ? 'Regular Team' : tg
+
   const filtered = people.filter(p => {
     if (search && !p.name.toLowerCase().includes(search.toLowerCase()) && !(p.email || '').toLowerCase().includes(search.toLowerCase())) return false
+    if (teamFilter !== 'all' && normalize(p.team_group) !== teamFilter) return false
     return true
   })
 
   const activeCount = people.filter(p => p.is_active).length
-  const groupColors = { 'Regular Team': '#1a56db', 'ISS Team': '#7c3aed' }
+  const regularCount = people.filter(p => normalize(p.team_group) === 'Regular Team' && p.is_active).length
+  const issCount = people.filter(p => normalize(p.team_group) === 'ISS Team' && p.is_active).length
+  const groupColors = { 'Regular Team': { bg: '#fef3c7', text: '#92400e' }, 'ISS Team': { bg: '#ede9fe', text: '#7c3aed' } }
 
   return (
     <div>
@@ -71,11 +91,34 @@ export default function People() {
         <button className="btn-primary" onClick={openNew}>+ Add Person</button>
       </div>
 
-      <input type="text" placeholder="Search by name or email..." value={search} onChange={e => setSearch(e.target.value)} style={{ marginBottom: 20, maxWidth: 400 }} />
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, alignItems: 'center' }}>
+        <input type="text" placeholder="Search by name or email..." value={search} onChange={e => setSearch(e.target.value)} style={{ flex: 1, maxWidth: 320 }} />
+        <div style={{ display: 'flex', gap: 4, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 8, padding: 3 }}>
+          {[
+            { key: 'all', label: `All (${activeCount})` },
+            { key: 'Regular Team', label: `Regular (${regularCount})` },
+            { key: 'ISS Team', label: `ISS (${issCount})` },
+          ].map(t => (
+            <button
+              key={t.key}
+              onClick={() => setTeamFilter(t.key)}
+              style={{
+                padding: '6px 14px', borderRadius: 6, fontSize: 13, fontWeight: 500, border: 'none',
+                background: teamFilter === t.key ? 'var(--primary)' : 'transparent',
+                color: teamFilter === t.key ? 'white' : 'var(--text-secondary)',
+                transition: 'all 0.15s'
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
         {filtered.map(p => {
-          const gc = groupColors[p.team_group] || '#64748b'
+          const displayTeam = normalize(p.team_group)
+          const gc = groupColors[displayTeam] || { bg: '#f1f5f9', text: '#64748b' }
           return (
             <div key={p.id} className="card" style={{ position: 'relative', opacity: p.is_active ? 1 : 0.5 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -98,7 +141,7 @@ export default function People() {
                 </div>
               </div>
               <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                <Badge bg={gc + '18'} text={gc}>{p.team_group}</Badge>
+                <Badge bg={gc.bg} text={gc.text}>{displayTeam}</Badge>
               </div>
               {!p.is_active && <span style={{ position: 'absolute', top: 12, right: 12, fontSize: 11, color: '#dc2626', fontWeight: 500 }}>Inactive</span>}
             </div>
@@ -112,7 +155,8 @@ export default function People() {
       {showModal && (
         <div style={modalOverlay} onClick={() => setShowModal(false)}>
           <div className="card" style={{ width: '100%', maxWidth: 480, padding: 32 }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 24 }}>{editing ? 'Edit Person' : 'Add Person'}</h3>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>{editing ? 'Edit Person' : 'Add Person'}</h3>
+            {error && <div style={{ marginBottom: 16, padding: '8px 12px', borderRadius: 6, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 13 }}>{error}</div>}
             <div style={{ display: 'grid', gap: 16 }}>
               <Field label="Name *">
                 <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={{ width: '100%' }} placeholder="Full name" />

@@ -3,6 +3,9 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 const navItems = [
+  { path: '/guide', label: 'Guide', icon: (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.5"/><path d="M9 9h1v5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><circle cx="10" cy="6.5" r=".75" fill="currentColor"/></svg>
+  )},
   { path: '/', label: 'Dashboard', icon: (
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2" y="2" width="7" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><rect x="11" y="2" width="7" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><rect x="2" y="12" width="7" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><rect x="11" y="9" width="7" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/></svg>
   )},
@@ -12,8 +15,8 @@ const navItems = [
   { path: '/people', label: 'People', icon: (
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.5"/><circle cx="14" cy="7" r="2" stroke="currentColor" strokeWidth="1.5"/><path d="M2.5 16.5c0-2.5 2-4.5 4.5-4.5s4.5 2 4.5 4.5" stroke="currentColor" strokeWidth="1.5"/><path d="M12 12c1.66 0 3 1.34 3 3v1.5" stroke="currentColor" strokeWidth="1.5"/></svg>
   )},
-  { path: '/allocations', label: 'Allocations', icon: (
-    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="4" width="14" height="13" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M3 7.5h14" stroke="currentColor" strokeWidth="1.5"/><path d="M7 2v4M13 2v4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+  { path: '/bms', label: 'BMS', icon: (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2.5" y="3" width="15" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M7.5 17h5M10 14v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
   )},
 ]
 
@@ -48,9 +51,9 @@ export default function Layout({ children, user }) {
             width: 32, height: 32, borderRadius: 8, background: 'var(--primary)',
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
           }}>
-            <span style={{ color: 'white', fontWeight: 800, fontSize: 16 }}>D</span>
+            <span style={{ color: 'white', fontWeight: 800, fontSize: 14 }}>DT</span>
           </div>
-          {sidebarOpen && <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', whiteSpace: 'nowrap' }}>Dhara</span>}
+          {sidebarOpen && <span style={{ fontWeight: 700, fontSize: 16, color: 'var(--text)', whiteSpace: 'nowrap' }}>Dhara's Team</span>}
         </div>
 
         {/* Nav */}
@@ -157,7 +160,7 @@ function InviteModal({ onClose }) {
     setError('')
     try {
       const { data: settings } = await supabase.from('settings').select('value').eq('key', 'team_name').single()
-      const teamName = settings?.value || 'Dhara Team'
+      const teamName = settings?.value || "Dhara's Team"
 
       const { data: existingUser } = await supabase.from('profiles').select('id').eq('email', email).single()
 

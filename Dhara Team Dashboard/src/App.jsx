@@ -5,7 +5,8 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Projects from './pages/Projects'
 import People from './pages/People'
-import Allocations from './pages/Allocations'
+import Presentation from './pages/Presentation'
+import Guide from './pages/Guide'
 import Layout from './components/Layout'
 import './index.css'
 
@@ -67,10 +68,11 @@ function App() {
     <HashRouter>
       <Layout user={profile}>
         <Routes>
+          <Route path="/guide" element={<Guide />} />
           <Route path="/" element={<Dashboard />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/people" element={<People />} />
-          <Route path="/allocations" element={<Allocations />} />
+          <Route path="/bms" element={<Presentation />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Layout>

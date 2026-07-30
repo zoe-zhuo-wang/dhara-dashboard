@@ -1,5 +1,18 @@
+-- ============================================
+-- Migration: dt_focal_id 从单个 UUID 改为 TEXT（逗号分隔，支持多人）
+-- ============================================
+ALTER TABLE projects DROP CONSTRAINT IF EXISTS projects_dt_focal_id_fkey;
+ALTER TABLE projects ALTER COLUMN dt_focal_id TYPE TEXT;
+
+-- ============================================
+-- Migration: people.email 唯一约束
+-- ============================================
+DELETE FROM people a USING people b WHERE a.id > b.id AND LOWER(a.email) = LOWER(b.email);
+ALTER TABLE people ADD CONSTRAINT people_email_unique UNIQUE (email);
+
+-- ============================================
 -- Fix: allow all operations for authenticated and anon roles
--- Run this in Supabase SQL Editor
+-- ============================================
 
 -- Drop old restrictive policies
 DROP POLICY IF EXISTS "Projects: authenticated can read" ON projects;
