@@ -7,7 +7,7 @@ export default function Guide() {
       </div>
 
       <ol style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 36 }}>
-        {['Invite your team', 'Projects — enter your data first', 'Dashboard — see the big picture', 'People — manage your roster', 'BMS — weekly review meeting', 'Tips'].map((s, i) => (
+        {['Add your team', 'Projects — enter your data first', 'Dashboard — see the big picture', 'People — manage your roster', 'BMS — weekly review meeting', 'Tips'].map((s, i) => (
           <li key={s} style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: '#64748b' }}>
             <span style={{ width: 26, height: 26, borderRadius: '50%', background: '#1e40af', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{i + 1}</span>
             {s}
@@ -15,13 +15,13 @@ export default function Guide() {
         ))}
       </ol>
 
-      <Section number="1" title="Invite Your Team" accent="#0f766e">
-        <p style={{ marginTop: 0 }}>Before adding projects, make sure your team members are in the system. Click the <strong>Invite</strong> button in the top bar to send invitations.</p>
+      <Section number="1" title="Add Your Team" accent="#0f766e">
+        <p style={{ marginTop: 0 }}>Before adding projects, make sure your team members are in the system.</p>
         <ul>
-          <li><strong>Admin</strong> — full access to all features, including managing people and deleting data.</li>
-          <li><strong>Member</strong> — can view and edit all project data.</li>
+          <li><strong>People who will log in</strong> — accounts are created by invitation. The admin sends an invite, and the person sets their own password. After their first login they appear in the <strong>People</strong> section automatically.</li>
+          <li><strong>People who won't log in</strong> (e.g. vendors, suppliers) — add them manually with the <em>+ Add Person</em> button on the <strong>People</strong> page.</li>
         </ul>
-        <p>Once invited, each person appears in the <strong>People</strong> section automatically. You can also add people manually there.</p>
+        <p>Everyone who signs in can view, add, and edit all project data. Only the system owner can change the code or database.</p>
       </Section>
 
       <Section number="2" title="Projects" accent="#1e40af">

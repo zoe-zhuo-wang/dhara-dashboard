@@ -2,10 +2,8 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
 export default function Login() {
-  const [isLogin, setIsLogin] = useState(true)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [fullName, setFullName] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -15,18 +13,8 @@ export default function Login() {
     setError('')
 
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({ email, password })
-        if (error) throw error
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { data: { full_name: fullName } }
-        })
-        if (error) throw error
-        setError('Check your email for confirmation link!')
-      }
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
+      if (error) throw error
     } catch (err) {
       setError(err.message)
     } finally {
@@ -50,20 +38,6 @@ export default function Login() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          {!isLogin && (
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Full Name</label>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Your name"
-                required={!isLogin}
-                style={{ width: '100%' }}
-              />
-            </div>
-          )}
-
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Email</label>
             <input
@@ -94,9 +68,9 @@ export default function Login() {
               marginBottom: 16,
               padding: '10px 14px',
               borderRadius: 8,
-              background: error.includes('Check your email') ? '#f0fdf4' : '#fef2f2',
-              border: `1px solid ${error.includes('Check your email') ? '#bbf7d0' : '#fecaca'}`,
-              color: error.includes('Check your email') ? '#166534' : '#991b1b',
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              color: '#991b1b',
               fontSize: 13
             }}>
               {error}
@@ -109,18 +83,13 @@ export default function Login() {
             disabled={loading}
             style={{ width: '100%', padding: '12px 0', fontSize: 15 }}
           >
-            {loading ? 'Loading...' : isLogin ? 'Sign In' : 'Create Account'}
+            {loading ? 'Loading...' : 'Sign In'}
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', marginTop: 24 }}>
-          <button
-            onClick={() => { setIsLogin(!isLogin); setError('') }}
-            style={{ background: 'none', color: 'var(--primary)', fontSize: 13, padding: 0, fontWeight: 500 }}
-          >
-            {isLogin ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
-          </button>
-        </div>
+        <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: 12, marginTop: 24 }}>
+          Access is by invitation. Contact your team admin if you need an account.
+        </p>
       </div>
     </div>
   )
