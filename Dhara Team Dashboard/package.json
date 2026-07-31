@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist -r https://github.com/zoe-zhuo-wang/dhara-dashboard.git"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
