@@ -81,7 +81,7 @@ git push github gh-pages --force
 
 ### ✅ Completed
 - [x] Login / Sign up (Supabase Auth)
-- [x] Dashboard with KPI cards + charts (Recharts)
+- [x] Dashboard with overview cards + charts (Recharts)
 - [x] Project CRUD (create, edit, delete, search, filter)
 - [x] People CRUD (card view, skills, roles)
 - [x] Allocations page (monthly MD tracking)
@@ -129,7 +129,7 @@ C:\Users\Joy\Dhara Team Dashboard\
 │   │   └── Layout.jsx            # Sidebar + topbar + invite modal
 │   └── pages/
 │       ├── Login.jsx             # Auth page
-│       ├── Dashboard.jsx         # KPI + charts + drag-drop
+│       ├── Dashboard.jsx         # Overview + charts + drag-drop
 │       ├── Projects.jsx          # Project CRUD table
 │       ├── People.jsx            # Team member cards
 │       ├── Allocations.jsx       # Monthly MD grid

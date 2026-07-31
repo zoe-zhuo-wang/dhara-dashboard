@@ -40,7 +40,7 @@ export default function Guide() {
       <Section number="3" title="Dashboard" accent="#7c3aed">
         <p style={{ marginTop: 0 }}>A high-level view of everything in your Projects table. All charts update automatically as project data changes.</p>
         <ul>
-          <li><strong>KPI Cards</strong> — Total Projects, Vetra Adoption Rate, and Total Budget at a glance.</li>
+          <li><strong>Overview Cards</strong> — Total Projects, Vetra Adoption Rate, and Total Budget at a glance.</li>
           <li><strong>Bar Chart</strong> — Project count grouped by current phase.</li>
           <li><strong>Donut Charts</strong> — Budget breakdown by funding type and budget status.</li>
         </ul>
