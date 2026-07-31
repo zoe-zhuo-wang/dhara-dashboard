@@ -11,6 +11,7 @@ export default function People() {
   const [teamFilter, setTeamFilter] = useState('all')
   const [form, setForm] = useState({ name: '', email: '', role: 'Developer', team_group: 'Regular Team', daily_rate: '', is_active: true, skills: '' })
   const [error, setError] = useState('')
+  const [successMsg, setSuccessMsg] = useState('')
 
   useEffect(() => { loadPeople() }, [])
 
@@ -60,6 +61,9 @@ export default function People() {
     }
     setShowModal(false)
     loadPeople()
+    const msg = editing ? 'Person updated successfully!' : 'Person added successfully!'
+    setSuccessMsg(msg)
+    setTimeout(() => setSuccessMsg(''), 5000)
   }
 
   const remove = async (id) => {
@@ -83,6 +87,12 @@ export default function People() {
 
   return (
     <div>
+      {successMsg && (
+        <div style={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 2000, padding: '14px 24px', borderRadius: 10, background: '#16a34a', color: 'white', fontSize: 14, fontWeight: 600, boxShadow: '0 8px 30px rgba(22,163,74,0.3)', display: 'flex', alignItems: 'center', gap: 10, animation: 'slideDown 0.3s ease' }}>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="9" fill="white" fillOpacity="0.2"/><path d="M6 10l3 3 5-5" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+          {successMsg}
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px' }}>People</h2>
