@@ -49,11 +49,20 @@ DROP POLICY IF EXISTS "Profiles: users can insert own" ON profiles;
 
 -- 4. Recreate: only logged-in users (role = authenticated) can read & write.
 --    Anonymous visitors get no access; existing data & accounts are unaffected.
+DROP POLICY IF EXISTS "Projects: authenticated all" ON projects;
+DROP POLICY IF EXISTS "People: authenticated all" ON people;
+DROP POLICY IF EXISTS "Project members: authenticated all" ON project_members;
+DROP POLICY IF EXISTS "Allocations: authenticated all" ON allocations;
+DROP POLICY IF EXISTS "Settings: authenticated all" ON settings;
+
 CREATE POLICY "Projects: authenticated all" ON projects FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "People: authenticated all" ON people FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Project members: authenticated all" ON project_members FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Allocations: authenticated all" ON allocations FOR ALL TO authenticated USING (true) WITH CHECK (true);
 CREATE POLICY "Settings: authenticated all" ON settings FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Profiles: authenticated read" ON profiles;
+DROP POLICY IF EXISTS "Profiles: users can update own" ON profiles;
 
 CREATE POLICY "Profiles: authenticated read" ON profiles FOR SELECT TO authenticated USING (true);
 CREATE POLICY "Profiles: users can update own" ON profiles FOR UPDATE TO authenticated USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
