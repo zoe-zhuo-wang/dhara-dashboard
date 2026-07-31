@@ -127,7 +127,7 @@ npm run dev
 ### Access Model (decided 2026-07-31)
 - All signed-in team members: full access — view, edit, delete
 - Only the owner (Zoe) can change the underlying code / schema:
-  - Code lives in a private GitHub repo (only she can push)
+  - Code repo is **public** on GitHub (made public 2026-07-31 — free GitHub Pages requires a public repo; code contains no secrets, `.env` gitignored, data protected by RLS so exposure is limited to the frontend code itself)
   - Database in Supabase (only she has dashboard/service access)
 - An admin-only-delete restriction was built and then **reverted** (commit `e04d507`) per owner decision
 - Enforced by RLS (`supabase/private-rls.sql`): anonymous = no access; authenticated = full CRUD on all data tables; profiles = read all + update own
@@ -165,6 +165,7 @@ ALTER TABLE people ADD CONSTRAINT people_email_unique UNIQUE (email);
 ```
 C:\Users\Joy\Dhara Team Dashboard\
 ├── .env                          # Supabase credentials (gitignored)
+├── "Dhara Team Dashboard - 技术概览与数据安全.md"   # plain-language tech overview + security design
 ├── index.html
 ├── package.json                  # deploy script pinned to GitHub repo URL
 ├── vite.config.js
@@ -196,6 +197,9 @@ C:\Users\Joy\Dhara Team Dashboard\
 ## Changelog
 
 ### 2026-07-31
+- **Docs:** added `Dhara Team Dashboard - 技术概览与数据安全.md` — plain-language summary of tech implementation + data security design
+- **Security (token):** GitHub PAT used for deploy was revoked on GitHub and removed from Windows Credential Manager; re-authenticated with a fresh short-lived PAT (stored in Windows Credential Manager via `git credential`/GCM, never in files)
+- **Repo made public** (free GitHub Pages requires public repo — private repo + free plan broke the site, 404). Verified: code contains no secrets; RLS still blocks anonymous access, so making the code public does not expose data. Pages re-enabled via API (branch `gh-pages`, path `/`)
 - **Security:** RLS enabled on all 6 tables; authenticated-only policies; verified anonymous read blocked (`[]`) and anonymous write blocked (`401`) — commits `cd79502`→`e85134e`
 - **Access model:** built admin-only-delete restriction, then reverted per owner decision (`e04d507`) — all members full CRUD, owner-only code/schema access. Final: `supabase/private-rls.sql`
 - **Account ↔ People merge:** `syncPerson` now matches by email first and links `user_id` to the existing person record instead of inserting a duplicate; deployed
