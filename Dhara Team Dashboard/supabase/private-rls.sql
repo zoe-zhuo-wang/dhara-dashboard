@@ -1,16 +1,17 @@
 -- ============================================
--- Private RLS (definitive): enable RLS + restrict all tables to authenticated users only
+-- Private RLS (definitive v2): ENABLE RLS + restrict all tables to authenticated users only
+-- Fixes the case where RLS was left DISABLED (relrowsecurity = false)
 -- Idempotent: safe to run multiple times.
 -- Run this in Supabase SQL Editor.
 -- ============================================
 
--- 1. Enable (and force) Row Level Security on every table
-ALTER TABLE profiles FORCE ROW LEVEL SECURITY;
-ALTER TABLE projects FORCE ROW LEVEL SECURITY;
-ALTER TABLE people FORCE ROW LEVEL SECURITY;
-ALTER TABLE project_members FORCE ROW LEVEL SECURITY;
-ALTER TABLE allocations FORCE ROW LEVEL SECURITY;
-ALTER TABLE settings FORCE ROW LEVEL SECURITY;
+-- 1. ENABLE Row Level Security on every table (turns the switch ON explicitly)
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE people ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE allocations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 
 -- 2. Drop EVERY existing policy on these tables (any name, any shape)
 DO $$
