@@ -121,7 +121,7 @@ export default function Projects() {
     const missing = requiredFields.filter(f => isFieldEmpty(f.key))
     if (missing.length > 0) {
       setShowErrors(true)
-      const errMsg = isEditing ? '请填写所有必填字段后再更新项目。' : '请填写所有必填字段后再创建项目。'
+      const errMsg = isEditing ? 'Please fill in all required fields before updating the project.' : 'Please fill in all required fields before creating the project.'
       setError(errMsg)
       alert(errMsg)
       setTimeout(() => {
@@ -152,7 +152,7 @@ export default function Projects() {
         setError(result.error.message || JSON.stringify(result.error))
         return
       }
-      const msg = isEditing ? '项目更新成功！' : '项目创建成功！'
+      const msg = isEditing ? 'Project updated successfully!' : 'Project created successfully!'
       alert(msg)
       setShowModal(false)
       setSuccessMsg(msg)
