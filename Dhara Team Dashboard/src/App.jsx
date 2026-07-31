@@ -39,8 +39,12 @@ function App() {
   }, [user])
 
   const syncPerson = async (profile) => {
-    const { data: existing } = await supabase.from('people').select('id').eq('user_id', profile.id).single()
-    if (!existing) {
+    const { data: matches } = await supabase
+      .from('people')
+      .select('id, user_id')
+      .or(`user_id.eq.${profile.id},email.ilike.${profile.email}`)
+      .limit(5)
+    if (!matches || matches.length === 0) {
       await supabase.from('people').insert({
         user_id: profile.id,
         name: profile.full_name || profile.email.split('@')[0],
@@ -49,6 +53,11 @@ function App() {
         team_group: 'General',
         is_active: true
       })
+      return
+    }
+    const linked = matches.find(m => m.user_id === profile.id) || matches[0]
+    if (!linked.user_id) {
+      await supabase.from('people').update({ user_id: profile.id }).eq('id', linked.id)
     }
   }
 
