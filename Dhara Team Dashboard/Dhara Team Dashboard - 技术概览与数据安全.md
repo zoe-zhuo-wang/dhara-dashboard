@@ -33,3 +33,49 @@
 ## 现状结论
 
 **当前安全性足够**。若团队长大或有更高要求，再考虑加：审计日志、细分角色权限。
+
+---
+
+# Dhara Team Dashboard — Tech Overview & Data Security
+
+> Created: 2026-07-31 · Last updated: 2026-08-04
+
+## In one sentence
+
+A team project dashboard that **requires login to use**. Data lives in a cloud database, and security is based on two layers: **login as the front door + a second lock on the database itself**.
+
+## How it's built
+
+| Part | Description |
+|------|-------------|
+| Frontend | React app, hosted on GitHub Pages (accessible from mainland China) |
+| Data | Supabase cloud database — 6 tables (projects, people, budget, etc.) |
+| Login | Email + password, only invited members can enter |
+
+## How security is kept (three gates)
+
+1. **Login gate** — without an account you can't get into the system.
+2. **Database lock (RLS)** — even if someone bypasses login and reaches the database directly, they can't read or modify anything. Verified: anonymous reads return empty, anonymous writes are rejected.
+3. **Key management** — GitHub tokens are set with short expiry and stored on the computer, never written into code; files containing secrets are never committed.
+
+## Permissions
+
+- All signed-in members: can view / edit all data.
+- Only the owner (Zoe): can change code and database structure.
+
+## 2026-07-31 Security handling log
+
+- Revoked and replaced the GitHub token (old token deleted, new token stored in Windows Credential Manager).
+- Repository made public: the code contains no secrets and the data is still locked by RLS, so making the code public doesn't affect data security (free GitHub Pages requires a public repo).
+
+## 2026-08-04 Updates
+
+- RLS confirmed on the live database: all policies are restricted to `authenticated` only, zero anonymous access.
+- Removed unused `people` columns (`role`, `daily_rate`, `skills`, `is_active`) from both schema and UI.
+- Added a "Forgot password" / password reset flow.
+- Added CI/CD: pushing to `main` automatically builds and deploys to GitHub Pages.
+- Rich-text `Key Updates` content is sanitized before rendering to block stored XSS.
+
+## Current status
+
+**Security is sufficient as it stands.** If the team grows or stricter requirements appear, consider adding: audit logs, fine-grained role permissions.
