@@ -73,7 +73,7 @@ export default function Presentation() {
             onChange={e => setFilter(e.target.value)}
             style={{ border: 'none', background: 'transparent', fontSize: 14, fontWeight: 500, color: '#334155', outline: 'none', cursor: 'pointer', paddingRight: 4 }}
           >
-            <option value="all">All DT Focus</option>
+            <option value="all">All DT Focal</option>
             {focalOptions.map(o => (
               <option key={o.id} value={o.id}>{o.name}</option>
             ))}
@@ -175,7 +175,7 @@ function BMSCard({ project, focalName, index, onSaved, onShowSuccess }) {
       }} />
 
       <div style={{ padding: '28px 32px 26px' }}>
-        {/* Row 1: Number + Project Name (left) | DT Focus (right) */}
+        {/* Row 1: Number + Project Name (left) | DT Focal (right) */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14, flex: 1, minWidth: 0 }}>
             <div style={{
@@ -199,7 +199,7 @@ function BMSCard({ project, focalName, index, onSaved, onShowSuccess }) {
             flexShrink: 0,
           }}>
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="5.5" r="3" stroke="#64748b" strokeWidth="1.3"/><path d="M3 14.5c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="#64748b" strokeWidth="1.3"/></svg>
-            <span style={{ fontSize: 13, color: '#94a3b8' }}>DT Focus</span>
+            <span style={{ fontSize: 13, color: '#94a3b8' }}>DT Focal</span>
             <span style={{ fontSize: 14, fontWeight: 600, color: '#334155' }}>{focalName}</span>
           </div>
         </div>
