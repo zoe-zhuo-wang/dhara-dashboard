@@ -49,6 +49,8 @@ export default function Dashboard() {
   const phaseData = Object.entries(phaseCounts)
     .map(([name, value]) => ({ name, value }))
     .sort((a, b) => b.value - a.value)
+  const phaseMax = Math.max(...phaseData.map(d => d.value), 0)
+  const phaseDomain = [0, Math.max(phaseMax + Math.ceil(phaseMax / 10) + 1, 10)]
 
   const fundingBudgets = {}
   projects.forEach(p => {
@@ -94,7 +96,7 @@ export default function Dashboard() {
           {phaseData.length > 0 ? (
             <ResponsiveContainer width="100%" height={Math.max(220, phaseData.length * 48 + 30)}>
               <BarChart data={phaseData} layout="vertical" margin={{ left: 10, right: 50, top: 5, bottom: 5 }}>
-                <XAxis type="number" stroke="#e2e8f0" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} domain={[0, 30]} />
+                <XAxis type="number" stroke="#e2e8f0" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} domain={phaseDomain} />
                 <YAxis type="category" dataKey="name" stroke="#64748b" fontSize={12} width={140} tickLine={false} axisLine={false} />
                 <Tooltip
                   contentStyle={{ background: '#fff', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.08)', fontSize: 13 }}

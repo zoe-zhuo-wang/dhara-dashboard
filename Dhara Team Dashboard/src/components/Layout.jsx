@@ -136,5 +136,3 @@ export default function Layout({ children, user }) {
     </div>
   )
 }
-
-const modalOverlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 20 }

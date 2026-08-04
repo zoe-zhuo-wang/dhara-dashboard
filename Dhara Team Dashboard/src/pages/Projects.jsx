@@ -1,11 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+﻿import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-
-const PHASE_OPTIONS = ['Budget Application', 'BSR / ISR', 'UAT', 'DEV', 'Golive']
-const BUDGET_STATUS_OPTIONS = ['Draft', 'Ongoing', 'Approved']
-const VETRA_OPTIONS = ['Yes', 'No']
-const OVERALL_STATUS_OPTIONS = ['On Track', 'Caution', 'Off Track', 'Finished', 'Not Started']
-const FUNDING_OPTIONS = ['R&D', 'R&D AI', 'Vendor Onboarding', 'BAU']
+import { PHASE_OPTIONS, BUDGET_STATUS_OPTIONS, VETRA_OPTIONS, OVERALL_STATUS_OPTIONS, FUNDING_OPTIONS, phaseColor, overallColor, fundingStyle, budgetStatusColor } from '../lib/constants'
 
 const ALL_COLUMNS = [
   { key: 'name', label: 'Project Name', default: true, width: 200 },
@@ -105,11 +100,6 @@ export default function Projects() {
     { key: 'overall_status', label: 'Overall Status' },
   ]
 
-  const isFormValid = () => requiredFields.every(f => {
-    const v = form[f.key]
-    return v !== undefined && v !== null && String(v).trim() !== ''
-  })
-
   const isFieldEmpty = (key) => {
     const v = form[key]
     return v === undefined || v === null || String(v).trim() === ''
@@ -153,7 +143,6 @@ export default function Projects() {
         return
       }
       const msg = isEditing ? 'Project updated successfully!' : 'Project created successfully!'
-      alert(msg)
       setShowModal(false)
       setSuccessMsg(msg)
       setTimeout(() => setSuccessMsg(''), 5000)
@@ -166,7 +155,12 @@ export default function Projects() {
 
   const remove = async (id) => {
     if (!confirm('Delete this project?')) return
-    await supabase.from('projects').delete().eq('id', id)
+    const { error } = await supabase.from('projects').delete().eq('id', id)
+    if (error) {
+      console.error('Delete error:', error)
+      setError(error.message || 'Failed to delete project')
+      return
+    }
     loadAll()
   }
 
@@ -215,35 +209,6 @@ export default function Projects() {
 
   const formatMoney = (n) => '$' + (n || 0).toLocaleString()
 
-  const fundingStyle = (f) => ({
-    'R&D': { bg: '#dbeafe', text: '#1e40af' },
-    'R&D AI': { bg: '#ede9fe', text: '#5b21b6' },
-    'Vendor Onboarding': { bg: '#fef3c7', text: '#92400e' },
-    'BAU': { bg: '#dcfce7', text: '#166534' },
-  }[f] || { bg: '#f1f5f9', text: '#64748b' })
-
-  const phaseColor = (ph) => ({
-    'Budget Application': { bg: '#dbeafe', text: '#1e40af' },
-    'BSR / ISR': { bg: '#ede9fe', text: '#5b21b6' },
-    'UAT': { bg: '#fef3c7', text: '#92400e' },
-    'DEV': { bg: '#dcfce7', text: '#166534' },
-    'Golive': { bg: '#d1fae5', text: '#065f46' },
-  }[ph] || { bg: '#f1f5f9', text: '#64748b' })
-
-  const overallColor = (os) => ({
-    'On Track': { bg: '#dcfce7', text: '#166534' },
-    'Caution': { bg: '#fef3c7', text: '#92400e' },
-    'Off Track': { bg: '#fef2f2', text: '#991b1b' },
-    'Finished': { bg: '#dbeafe', text: '#1e40af' },
-    'Not Started': { bg: '#f1f5f9', text: '#64748b' },
-  }[os] || { bg: '#f1f5f9', text: '#64748b' })
-
-  const budgetStatusColor = (bs) => ({
-    'Draft': { bg: '#f1f5f9', text: '#64748b' },
-    'Ongoing': { bg: '#fef3c7', text: '#92400e' },
-    'Approved': { bg: '#dcfce7', text: '#166534' },
-  }[bs] || { bg: '#f1f5f9', text: '#64748b' })
-
   const cellTextStyle = { fontSize: 13, lineHeight: 1.4, maxHeight: 80, overflowY: 'auto', wordBreak: 'break-word' }
 
   const renderCell = (col, p) => {
@@ -284,9 +249,6 @@ export default function Projects() {
     if (col.key === 'dt_focal_id') return people.map(p => p.name).sort()
     return null
   }
-
-  const visibleColumns = ALL_COLUMNS.filter(c => visibleCols.includes(c.key))
-  const totalCols = visibleColumns.length + 1
 
   const exportExcel = async () => {
     const XLSX = await import('xlsx')
@@ -546,156 +508,6 @@ function AddPersonModal({ onClose, onAdded }) {
           <button className="btn-primary btn-sm" onClick={save} disabled={!name.trim() || !email.trim() || saving}>
             {saving ? 'Saving...' : 'Add'}
           </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function MembersModal({ project, people, onClose, onUpdated }) {
-  const [members, setMembers] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [adding, setAdding] = useState(false)
-  const [selectedPerson, setSelectedPerson] = useState('')
-  const [allocPct, setAllocPct] = useState(100)
-
-  useEffect(() => { loadMembers() }, [])
-
-  const loadMembers = async () => {
-    setLoading(true)
-    const { data } = await supabase
-      .from('project_members')
-      .select('*')
-      .eq('project_id', project.id)
-    setMembers(data || [])
-    setLoading(false)
-  }
-
-  const addMember = async () => {
-    if (!selectedPerson) return
-    const { error } = await supabase.from('project_members').insert({
-      project_id: project.id,
-      person_id: selectedPerson,
-      allocation_pct: parseInt(allocPct) || 100
-    })
-    if (!error) {
-      setSelectedPerson('')
-      setAllocPct(100)
-      setAdding(false)
-      loadMembers()
-    }
-  }
-
-  const removeMember = async (id) => {
-    if (!confirm('Remove this member from the project?')) return
-    await supabase.from('project_members').delete().eq('id', id)
-    loadMembers()
-  }
-
-  const updateAlloc = async (id, pct) => {
-    await supabase.from('project_members').update({ allocation_pct: parseInt(pct) || 0 }).eq('id', id)
-    loadMembers()
-  }
-
-  const getPerson = (id) => people.find(p => p.id === id)
-  const memberPersonIds = members.map(m => m.person_id)
-  const availablePeople = people.filter(p => p.is_active && !memberPersonIds.includes(p.id))
-
-  return (
-    <div style={modalOverlay} onClick={onClose}>
-      <div className="card" style={{ width: '100%', maxWidth: 520, maxHeight: '80vh', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={e => e.stopPropagation()}>
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-          <div>
-            <h3 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Team Members</h3>
-            <p style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '4px 0 0' }}>{project.name}</p>
-          </div>
-          <button onClick={onClose} style={{ background: 'none', color: 'var(--text-secondary)', padding: 4 }}>
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M15 5L5 15M5 5l10 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-          </button>
-        </div>
-
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 24px' }}>
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: 32, color: 'var(--text-secondary)' }}>Loading...</div>
-          ) : members.length === 0 && !adding ? (
-            <div style={{ textAlign: 'center', padding: 40 }}>
-              <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 16 }}>No members assigned yet</div>
-              <button className="btn-primary btn-sm" onClick={() => setAdding(true)}>+ Add First Member</button>
-            </div>
-          ) : (
-            <>
-              {members.map(m => {
-                const person = getPerson(m.person_id)
-                return (
-                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{
-                        width: 34, height: 34, borderRadius: 8, background: '#eff6ff',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontWeight: 600, fontSize: 13, color: 'var(--primary)', flexShrink: 0
-                      }}>
-                        {(person?.name || '?')[0].toUpperCase()}
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 14, fontWeight: 600 }}>{person?.name || 'Unknown'}</div>
-                        <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{person?.email || ''}</div>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                        <input
-                          type="number"
-                          min="0" max="100"
-                          value={m.allocation_pct}
-                          onChange={e => updateAlloc(m.id, e.target.value)}
-                          style={{ width: 56, padding: '4px 6px', fontSize: 12, textAlign: 'center', borderRadius: 6, border: '1px solid var(--border)' }}
-                        />
-                        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>%</span>
-                      </div>
-                      <button onClick={() => removeMember(m.id)} style={{ background: 'none', color: '#dc2626', padding: 4, borderRadius: 4 }}>
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
-
-              {adding ? (
-                <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: 'var(--bg)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <select
-                    value={selectedPerson}
-                    onChange={e => setSelectedPerson(e.target.value)}
-                    style={{ flex: 1, minWidth: 150, padding: '8px 10px', fontSize: 13 }}
-                  >
-                    <option value="">-- Select person --</option>
-                    {availablePeople.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <input
-                      type="number" min="0" max="100"
-                      value={allocPct}
-                      onChange={e => setAllocPct(e.target.value)}
-                      style={{ width: 56, padding: '8px 6px', fontSize: 13, textAlign: 'center', borderRadius: 6, border: '1px solid var(--border)' }}
-                    />
-                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>%</span>
-                  </div>
-                  <button className="btn-primary btn-sm" onClick={addMember} disabled={!selectedPerson}>Add</button>
-                  <button className="btn-secondary btn-sm" onClick={() => { setAdding(false); setSelectedPerson('') }}>Cancel</button>
-                </div>
-              ) : (
-                availablePeople.length > 0 && (
-                  <button
-                    className="btn-secondary btn-sm"
-                    onClick={() => setAdding(true)}
-                    style={{ marginTop: 12, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
-                    Add Member
-                  </button>
-                )
-              )}
-            </>
-          )}
         </div>
       </div>
     </div>

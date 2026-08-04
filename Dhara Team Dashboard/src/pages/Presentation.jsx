@@ -1,24 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-
-const PHASE_OPTIONS = ['Budget Application', 'BSR / ISR', 'UAT', 'DEV', 'Golive']
-const OVERALL_STATUS_OPTIONS = ['On Track', 'Caution', 'Off Track', 'Finished', 'Not Started']
-
-const phaseColor = (ph) => ({
-  'Budget Application': { bg: '#dbeafe', text: '#1e40af' },
-  'BSR / ISR': { bg: '#ede9fe', text: '#5b21b6' },
-  'UAT': { bg: '#fef3c7', text: '#92400e' },
-  'DEV': { bg: '#dcfce7', text: '#166534' },
-  'Golive': { bg: '#d1fae5', text: '#065f46' },
-}[ph] || { bg: '#f1f5f9', text: '#64748b' })
-
-const overallColor = (os) => ({
-  'On Track': { bg: '#dcfce7', text: '#166534' },
-  'Caution': { bg: '#fef3c7', text: '#92400e' },
-  'Off Track': { bg: '#fef2f2', text: '#991b1b' },
-  'Finished': { bg: '#dbeafe', text: '#1e40af' },
-  'Not Started': { bg: '#f1f5f9', text: '#64748b' },
-}[os] || { bg: '#f1f5f9', text: '#64748b' })
+import { PHASE_OPTIONS, OVERALL_STATUS_OPTIONS, phaseColor, overallColor } from '../lib/constants'
+import { sanitizeHtml } from '../lib/sanitize'
 
 function Badge({ bg, text, children }) {
   return (
@@ -430,7 +413,7 @@ function BMSCard({ project, focalName, index, onSaved, onShowSuccess }) {
             <div style={{ padding: '16px 20px', minHeight: 28 }}>
               {project.key_updates ? (
                 hasRichText ? (
-                  <div style={{ fontSize: 15, color: '#334155', lineHeight: 1.8 }} dangerouslySetInnerHTML={{ __html: project.key_updates }} />
+                  <div style={{ fontSize: 15, color: '#334155', lineHeight: 1.8 }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(project.key_updates) }} />
                 ) : (
                   <div style={{ fontSize: 15, color: '#334155', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{project.key_updates}</div>
                 )

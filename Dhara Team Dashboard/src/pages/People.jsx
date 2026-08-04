@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-
-const GROUPS = ['Regular Team', 'ISS Team']
+import { GROUPS } from '../lib/constants'
 
 export default function People() {
   const [people, setPeople] = useState([])
@@ -55,9 +54,11 @@ export default function People() {
       skills: form.skills.split(',').map(s => s.trim()).filter(Boolean)
     }
     if (editing) {
-      await supabase.from('people').update(payload).eq('id', editing.id)
+      const { error } = await supabase.from('people').update(payload).eq('id', editing.id)
+      if (error) { setError(error.message); return }
     } else {
-      await supabase.from('people').insert(payload)
+      const { error } = await supabase.from('people').insert(payload)
+      if (error) { setError(error.message); return }
     }
     setShowModal(false)
     loadPeople()
@@ -68,7 +69,11 @@ export default function People() {
 
   const remove = async (id) => {
     if (!confirm('Remove this person?')) return
-    await supabase.from('people').delete().eq('id', id)
+    const { error } = await supabase.from('people').delete().eq('id', id)
+    if (error) {
+      setError(error.message || 'Failed to remove person')
+      return
+    }
     loadPeople()
   }
 

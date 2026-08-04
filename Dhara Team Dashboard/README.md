@@ -1,16 +1,45 @@
-# React + Vite
+# Dhara Team Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A login-protected team project dashboard for tracking projects, budgets, and weekly progress reviews.
 
-Currently, two official plugins are available:
+## Stack
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- **Frontend** — React 19 + Vite 8 + Tailwind CSS 4 + Recharts
+- **Backend** — Supabase (PostgreSQL + Auth + Row Level Security)
+- **Deploy** — GitHub Pages (`zoe-zhuo-wang/dhara-dashboard`, base path `/dhara-dashboard/`)
 
-## React Compiler
+## Pages
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Route | Page | Purpose |
+|-------|------|---------|
+| `/` | Dashboard | Overview cards + charts (phase, funding type, budget status) |
+| `/projects` | Projects | Full project CRUD, column toggles, filters, search, Excel export |
+| `/people` | People | Team roster management |
+| `/bms` | BMS | Weekly meeting view with inline phase/status edits and rich-text Key Updates |
+| `/guide` | Guide | User guide for the team |
 
-## Expanding the Oxlint configuration
+## Local development
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```bash
+npm install
+npm run dev
+```
+
+Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env` (falls back to the values in `src/lib/supabase.js`).
+
+## Scripts
+
+- `npm run dev` — local dev server
+- `npm run build` — production build to `dist/`
+- `npm run lint` — oxlint
+- `npm run deploy` — publish `dist/` to GitHub Pages
+
+## Database
+
+Schema and RLS policies live in `supabase/`. `supabase/private-rls.sql` is the authoritative RLS script: only authenticated members get full access; anonymous access is denied. Run it in the Supabase SQL Editor.
+
+## Security
+
+- Auth gate: email + password, invite-only accounts, 8-char minimum password.
+- RLS: second lock on the database — anonymous reads/writes are rejected.
+- Keys: the Supabase anon key is a public client key; real secrets live in `.env*` files which are gitignored.
