@@ -249,7 +249,7 @@ function DonutChart({ data, colors, formatMoney }) {
     cachedKey.current = key
     cachedPositions.current = result
     return result
-  }, [data, total])
+  }, [data, total, RADIAN])
 
   const CustomTooltip = ({ active, payload }) => {
     if (!active || !payload?.length) return null
@@ -263,7 +263,7 @@ function DonutChart({ data, colors, formatMoney }) {
     )
   }
 
-  const renderLabel = ({ cx, cy, outerRadius, midAngle, index }) => {
+  const renderLabel = ({ cx, cy, outerRadius, index }) => {
     const d = data[index]
     const pct = total > 0 ? ((d.value / total) * 100).toFixed(1) : 0
 

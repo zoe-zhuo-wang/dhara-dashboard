@@ -8,7 +8,7 @@ export default function People() {
   const [editing, setEditing] = useState(null)
   const [search, setSearch] = useState('')
   const [teamFilter, setTeamFilter] = useState('all')
-  const [form, setForm] = useState({ name: '', email: '', role: 'Developer', team_group: 'Regular Team', daily_rate: '', is_active: true, skills: '' })
+  const [form, setForm] = useState({ name: '', email: '', team_group: 'Regular Team' })
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
 
@@ -21,7 +21,7 @@ export default function People() {
 
   const openNew = () => {
     setEditing(null)
-    setForm({ name: '', email: '', role: 'Developer', team_group: 'Regular Team', daily_rate: '', is_active: true, skills: '' })
+    setForm({ name: '', email: '', team_group: 'Regular Team' })
     setError('')
     setShowModal(true)
   }
@@ -29,8 +29,7 @@ export default function People() {
   const openEdit = (p) => {
     setEditing(p)
     setForm({
-      name: p.name, email: p.email || '', role: p.role, team_group: p.team_group,
-      daily_rate: p.daily_rate || '', is_active: p.is_active, skills: (p.skills || []).join(', ')
+      name: p.name, email: p.email || '', team_group: p.team_group
     })
     setError('')
     setShowModal(true)
@@ -49,9 +48,7 @@ export default function People() {
       }
     }
     const payload = {
-      ...form, email,
-      daily_rate: parseFloat(form.daily_rate) || 0,
-      skills: form.skills.split(',').map(s => s.trim()).filter(Boolean)
+      name: form.name, email, team_group: form.team_group
     }
     if (editing) {
       const { error } = await supabase.from('people').update(payload).eq('id', editing.id)
@@ -85,9 +82,9 @@ export default function People() {
     return true
   })
 
-  const activeCount = people.filter(p => p.is_active).length
-  const regularCount = people.filter(p => normalize(p.team_group) === 'Regular Team' && p.is_active).length
-  const issCount = people.filter(p => normalize(p.team_group) === 'ISS Team' && p.is_active).length
+  const activeCount = people.length
+  const regularCount = people.filter(p => normalize(p.team_group) === 'Regular Team').length
+  const issCount = people.filter(p => normalize(p.team_group) === 'ISS Team').length
   const groupColors = { 'Regular Team': { bg: '#fef3c7', text: '#92400e' }, 'ISS Team': { bg: '#ede9fe', text: '#7c3aed' } }
 
   return (
@@ -135,7 +132,7 @@ export default function People() {
           const displayTeam = normalize(p.team_group)
           const gc = groupColors[displayTeam] || { bg: '#f1f5f9', text: '#64748b' }
           return (
-            <div key={p.id} className="card" style={{ position: 'relative', opacity: p.is_active ? 1 : 0.5 }}>
+            <div key={p.id} className="card" style={{ position: 'relative' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
                   <div style={{
@@ -158,7 +155,6 @@ export default function People() {
               <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 <Badge bg={gc.bg} text={gc.text}>{displayTeam}</Badge>
               </div>
-              {!p.is_active && <span style={{ position: 'absolute', top: 12, right: 12, fontSize: 11, color: '#dc2626', fontWeight: 500 }}>Inactive</span>}
             </div>
           )
         })}
@@ -184,10 +180,6 @@ export default function People() {
                   {GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
                 </select>
               </Field>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, cursor: 'pointer' }}>
-                <input type="checkbox" checked={form.is_active} onChange={e => setForm({ ...form, is_active: e.target.checked })} style={{ width: 16, height: 16, accentColor: 'var(--primary)' }} />
-                Active team member
-              </label>
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 28 }}>
               <button className="btn-secondary" onClick={() => setShowModal(false)}>Cancel</button>

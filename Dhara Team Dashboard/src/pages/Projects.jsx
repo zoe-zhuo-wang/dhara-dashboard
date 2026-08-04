@@ -469,9 +469,7 @@ function AddPersonModal({ onClose, onAdded }) {
       const { data, error: err } = await supabase.from('people').insert({
         name: name.trim(),
         email: email.trim().toLowerCase(),
-        role: 'Other',
-        team_group: team,
-        is_active: true
+        team_group: team
       }).select('id, name, email').single()
       if (err) throw err
       onAdded(data)

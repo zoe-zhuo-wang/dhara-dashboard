@@ -6,6 +6,8 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [resetSent, setResetSent] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -20,6 +22,16 @@ export default function Login() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleReset = async () => {
+    if (!email) { setError('Enter your email first, then request a reset.'); return }
+    setResetLoading(true)
+    setError('')
+    const { error } = await supabase.auth.resetPasswordForEmail(email)
+    setResetLoading(false)
+    if (error) { setError(error.message); return }
+    setResetSent(true)
   }
 
   return (
@@ -86,6 +98,23 @@ export default function Login() {
             {loading ? 'Loading...' : 'Sign In'}
           </button>
         </form>
+
+        <div style={{ textAlign: 'center', marginTop: 16 }}>
+          {resetSent ? (
+            <p style={{ margin: 0, fontSize: 13, color: '#16a34a', lineHeight: 1.6 }}>
+              If an account exists for <strong>{email}</strong>, a password reset link has been sent. Check your inbox.
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={resetLoading}
+              style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: 13, cursor: 'pointer', padding: 0 }}
+            >
+              {resetLoading ? 'Sending...' : 'Forgot password?'}
+            </button>
+          )}
+        </div>
 
         <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: 12, marginTop: 24 }}>
           Access is by invitation. Contact your team admin if you need an account.

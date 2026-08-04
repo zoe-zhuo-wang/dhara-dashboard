@@ -38,11 +38,7 @@ CREATE TABLE IF NOT EXISTS people (
   user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
   email TEXT,
-  role TEXT DEFAULT 'Developer',
-  skills TEXT[] DEFAULT '{}',
   team_group TEXT NOT NULL DEFAULT 'General',
-  daily_rate NUMERIC(8, 2) DEFAULT 0,
-  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );

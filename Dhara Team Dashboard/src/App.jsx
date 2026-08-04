@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { supabase } from './lib/supabase'
 import Login from './pages/Login'
+import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
 import Projects from './pages/Projects'
 import People from './pages/People'
@@ -14,6 +15,7 @@ function App() {
   const [user, setUser] = useState(null)
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [recovery, setRecovery] = useState(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -21,8 +23,9 @@ function App() {
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null)
+      if (event === 'PASSWORD_RECOVERY') setRecovery(true)
     })
 
     return () => subscription.unsubscribe()
@@ -49,9 +52,7 @@ function App() {
         user_id: profile.id,
         name: profile.full_name || profile.email.split('@')[0],
         email: profile.email,
-        role: 'Other',
-        team_group: 'General',
-        is_active: true
+        team_group: 'General'
       })
       return
     }
@@ -67,6 +68,10 @@ function App() {
         <div style={{ color: 'var(--text-secondary)', fontSize: 16 }}>Loading...</div>
       </div>
     )
+  }
+
+  if (recovery) {
+    return <ResetPassword onDone={() => setRecovery(false)} />
   }
 
   if (!user) {
