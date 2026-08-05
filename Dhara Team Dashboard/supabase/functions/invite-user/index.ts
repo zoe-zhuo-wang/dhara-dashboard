@@ -8,14 +8,25 @@ const supabaseAdmin = createClient(
 
 const APP_ORIGIN = 'https://zoe-zhuo-wang.github.io/dhara-dashboard'
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'authorization, apikey, x-client-info, content-type',
+  'Access-Control-Max-Age': '86400'
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' }
+    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS }
   })
 }
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: CORS_HEADERS })
+  }
+
   if (req.method !== 'POST') {
     return json({ error: 'Method not allowed' }, 405)
   }

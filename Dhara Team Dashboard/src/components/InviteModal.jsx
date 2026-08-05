@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { supabase, EDGE_FUNC_URL } from '../lib/supabase'
+import { supabase, EDGE_FUNC_URL, ANON_KEY } from '../lib/supabase'
 
 export default function InviteModal({ onClose }) {
   const [email, setEmail] = useState('')
@@ -23,7 +23,8 @@ export default function InviteModal({ onClose }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`
+          Authorization: `Bearer ${session?.access_token}`,
+          apikey: ANON_KEY
         },
         body: JSON.stringify({ email, name, team_group: teamGroup })
       })
