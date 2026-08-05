@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { PHASE_OPTIONS, BUDGET_STATUS_OPTIONS, VETRA_OPTIONS, OVERALL_STATUS_OPTIONS, FUNDING_OPTIONS, phaseColor, overallColor, fundingStyle, budgetStatusColor } from '../lib/constants'
+import { fetchPhaseOptions } from '../lib/phases'
 
 const ALL_COLUMNS = [
   { key: 'name', label: 'Project Name', default: true, width: 200 },
@@ -34,6 +35,8 @@ export default function Projects() {
   const [viewingProject, setViewingProject] = useState(null)
   const [showErrors, setShowErrors] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
+  const [phaseOptions, setPhaseOptions] = useState(PHASE_OPTIONS)
+  const [customPhase, setCustomPhase] = useState('')
   const firstErrorRef = useRef(null)
   const colPickerRef = useRef(null)
   const emptyForm = { name: '', description: '', current_phase: '', key_updates: '', budget_status: '', biz_case: '', vetra_adopted: '', overall_status: '', budget: '', start_date: '', end_date: '', dt_focal_id: '', funding_type: '' }
@@ -53,17 +56,20 @@ export default function Projects() {
   }, [showColPicker])
 
   const loadAll = async () => {
-    const [projRes, peopleRes] = await Promise.all([
+    const [projRes, peopleRes, phaseOpts] = await Promise.all([
       supabase.from('projects').select('*').order('created_at', { ascending: false }),
-      supabase.from('people').select('id, name, email').order('name')
+      supabase.from('people').select('id, name, email').order('name'),
+      fetchPhaseOptions()
     ])
     setProjects(projRes.data || [])
     setPeople(peopleRes.data || [])
+    setPhaseOptions(phaseOpts)
   }
 
   const openNew = () => {
     setEditing(null)
     setForm({ ...emptyForm, funding_type: '' })
+    setCustomPhase('')
     setShowErrors(false)
     setError('')
     setShowModal(true)
@@ -71,6 +77,7 @@ export default function Projects() {
 
   const openEdit = (p) => {
     setEditing(p)
+    setCustomPhase('')
     setForm({
       name: p.name, description: p.description || '',
       current_phase: p.current_phase || '', key_updates: p.key_updates || '',
@@ -108,7 +115,8 @@ export default function Projects() {
   const save = async () => {
     setError('')
     const isEditing = !!editing
-    const missing = requiredFields.filter(f => isFieldEmpty(f.key))
+    const phaseValue = form.current_phase === '__custom__' ? customPhase.trim() : form.current_phase
+    const missing = requiredFields.filter(f => f.key === 'current_phase' ? !phaseValue : isFieldEmpty(f.key))
     if (missing.length > 0) {
       setShowErrors(true)
       const errMsg = isEditing ? 'Please fill in all required fields before updating the project.' : 'Please fill in all required fields before creating the project.'
@@ -123,7 +131,7 @@ export default function Projects() {
     }
     const payload = {
       name: form.name, description: form.description,
-      current_phase: form.current_phase, key_updates: form.key_updates,
+      current_phase: phaseValue, key_updates: form.key_updates,
       budget_status: form.budget_status, biz_case: form.biz_case,
       vetra_adopted: form.vetra_adopted, overall_status: form.overall_status,
       budget: parseFloat(form.budget) || 0, start_date: form.start_date || null,
@@ -245,6 +253,7 @@ export default function Projects() {
   }
 
   const getFilterValues = (col) => {
+    if (col.key === 'current_phase') return phaseOptions
     if (col.options) return col.options
     if (col.key === 'dt_focal_id') return people.map(p => p.name).sort()
     return null
@@ -415,7 +424,11 @@ export default function Projects() {
                     </div>
                     <Field label="Key Updates *" error={errIfEmpty('key_updates')}><div ref={refIfFirst('key_updates')}><textarea value={form.key_updates} onChange={e => setForm({ ...form, key_updates: e.target.value })} rows={3} style={{ width: '100%', height: 80, resize: 'none' }} placeholder="Latest updates" /></div></Field>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                      <Field label="Current Phase *" error={errIfEmpty('current_phase')}><div ref={refIfFirst('current_phase')}><select value={form.current_phase} onChange={e => setForm({ ...form, current_phase: e.target.value })} style={{ width: '100%' }}><option value="">-- Select Phase --</option>{PHASE_OPTIONS.map(p => <option key={p} value={p}>{p}</option>)}</select></div></Field>
+                      <Field label="Current Phase *" error={errIfEmpty('current_phase')}><div ref={refIfFirst('current_phase')}>{form.current_phase === '__custom__' ? (
+                        <input value={customPhase} onChange={e => setCustomPhase(e.target.value)} style={{ width: '100%' }} placeholder="Enter a new phase..." />
+                      ) : (
+                        <select value={form.current_phase} onChange={e => setForm({ ...form, current_phase: e.target.value })} style={{ width: '100%' }}><option value="">-- Select Phase --</option>{phaseOptions.map(p => <option key={p} value={p}>{p}</option>)}<option value="__custom__">＋ Custom Phase…</option></select>
+                      )}</div></Field>
                       <Field label="Overall Status *" error={errIfEmpty('overall_status')}><div ref={refIfFirst('overall_status')}><select value={form.overall_status} onChange={e => setForm({ ...form, overall_status: e.target.value })} style={{ width: '100%' }}><option value="">-- Select Status --</option>{OVERALL_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}</select></div></Field>
                     </div>
                   </>

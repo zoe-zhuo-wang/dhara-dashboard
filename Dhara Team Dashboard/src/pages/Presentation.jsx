@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { PHASE_OPTIONS, OVERALL_STATUS_OPTIONS, phaseColor, overallColor } from '../lib/constants'
 import { sanitizeHtml } from '../lib/sanitize'
+import { fetchPhaseOptions } from '../lib/phases'
 
 function Badge({ bg, text, children }) {
   return (
@@ -22,17 +23,20 @@ export default function Presentation() {
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [successMsg, setSuccessMsg] = useState('')
+  const [phaseOptions, setPhaseOptions] = useState(PHASE_OPTIONS)
 
   useEffect(() => { loadAll() }, [])
 
   const loadAll = async () => {
     setLoading(true)
-    const [projRes, peopleRes] = await Promise.all([
+    const [projRes, peopleRes, phaseOpts] = await Promise.all([
       supabase.from('projects').select('*').order('created_at', { ascending: false }),
       supabase.from('people').select('id, name'),
+      fetchPhaseOptions(),
     ])
     setProjects(projRes.data || [])
     setPeople(peopleRes.data || [])
+    setPhaseOptions(phaseOpts)
     setLoading(false)
   }
 
@@ -88,7 +92,7 @@ export default function Presentation() {
       ) : (
         <div style={{ display: 'grid', gap: 24 }}>
           {filtered.map((p, idx) => (
-            <BMSCard key={p.id} project={p} focalName={getPersonNames(p.dt_focal_id)} index={idx} onSaved={loadAll} onShowSuccess={showSuccess} />
+            <BMSCard key={p.id} project={p} focalName={getPersonNames(p.dt_focal_id)} index={idx} onSaved={loadAll} onShowSuccess={showSuccess} phaseOptions={phaseOptions} />
           ))}
         </div>
       )}
@@ -96,9 +100,10 @@ export default function Presentation() {
   )
 }
 
-function BMSCard({ project, focalName, index, onSaved, onShowSuccess }) {
+function BMSCard({ project, focalName, index, onSaved, onShowSuccess, phaseOptions }) {
   const [editingField, setEditingField] = useState(null)
   const [phaseDraft, setPhaseDraft] = useState(project.current_phase || '')
+  const [customPhase, setCustomPhase] = useState('')
   const [overallDraft, setOverallDraft] = useState(project.overall_status || '')
   const [saving, setSaving] = useState(false)
   const editorRef = useRef(null)
@@ -209,25 +214,40 @@ function BMSCard({ project, focalName, index, onSaved, onShowSuccess }) {
           {editingField === 'phase' ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>Current Phase：</span>
-              <select
-                value={phaseDraft}
-                onChange={e => setPhaseDraft(e.target.value)}
-                autoFocus
-                style={{ padding: '4px 8px', borderRadius: 6, border: '1.5px solid #93c5fd', fontSize: 14, background: '#fff', outline: 'none' }}
-              >
-                <option value="">--</option>
-                {PHASE_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-              </select>
-              <button onClick={() => saveField('current_phase', phaseDraft)} disabled={saving} style={{ fontSize: 13, color: '#fff', background: '#3b82f6', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontWeight: 600 }}>
+              {phaseDraft === '__custom__' ? (
+                <input
+                  value={customPhase}
+                  onChange={e => setCustomPhase(e.target.value)}
+                  autoFocus
+                  placeholder="Enter a new phase..."
+                  style={{ padding: '4px 8px', borderRadius: 6, border: '1.5px solid #93c5fd', fontSize: 14, background: '#fff', outline: 'none', width: 180 }}
+                />
+              ) : (
+                <select
+                  value={phaseDraft}
+                  onChange={e => setPhaseDraft(e.target.value)}
+                  autoFocus
+                  style={{ padding: '4px 8px', borderRadius: 6, border: '1.5px solid #93c5fd', fontSize: 14, background: '#fff', outline: 'none' }}
+                >
+                  <option value="">--</option>
+                  {phaseOptions.map(o => <option key={o} value={o}>{o}</option>)}
+                  <option value="__custom__">＋ Custom Phase…</option>
+                </select>
+              )}
+              <button onClick={() => {
+                const val = phaseDraft === '__custom__' ? customPhase.trim() : phaseDraft
+                if (!val) return
+                saveField('current_phase', val)
+              }} disabled={saving} style={{ fontSize: 13, color: '#fff', background: '#3b82f6', border: 'none', borderRadius: 6, padding: '4px 12px', cursor: 'pointer', fontWeight: 600 }}>
                 {saving ? '...' : 'OK'}
               </button>
-              <button onClick={() => { setPhaseDraft(project.current_phase || ''); setEditingField(null) }} style={{ fontSize: 13, color: '#64748b', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>
+              <button onClick={() => { setPhaseDraft(project.current_phase || ''); setCustomPhase(''); setEditingField(null) }} style={{ fontSize: 13, color: '#64748b', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 6, padding: '4px 10px', cursor: 'pointer' }}>
                 Cancel
               </button>
             </div>
           ) : (
             <div
-              onClick={() => { setEditingField('phase'); setPhaseDraft(project.current_phase || '') }}
+              onClick={() => { setEditingField('phase'); setPhaseDraft(project.current_phase || ''); setCustomPhase('') }}
               style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, transition: 'transform 0.1s' }}
               onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.03)'}
               onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
