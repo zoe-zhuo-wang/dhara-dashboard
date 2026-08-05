@@ -30,7 +30,7 @@ A team resource and project management dashboard for the Dhara team (Lenovo). Bu
 - **Repo:** https://github.com/zoe-zhuo-wang/dhara-dashboard
 - **Why GitHub Pages:** Vercel (`*.vercel.app`) is slow/blocked from China
 - **Deploy command:** `npm run deploy` (uses `gh-pages -d dist -r <repo-url>`; `-r` needed because there is no `origin` remote)
-- **CI (pending):** an auto-deploy workflow exists locally at `.github/workflows/deploy.yml` but is NOT committed. Its paths (`Dhara Team Dashboard/**`) assume the dashboard lives in a subfolder; on GitHub the files sit at the repo root, so the workflow would need path fixes before enabling. Until then, deploy manually with `npm run deploy`.
+- **CI (enabled 2026-08-05):** auto-deploy on push to `main` via `.github/workflows/deploy.yml` (GitHub Actions → `npm ci` → `npm run build` → gh-pages). Paths fixed for repo-root layout. Manual `npm run deploy` no longer needed.
 
 ### Local Dev
 ```bash
@@ -110,7 +110,6 @@ npm run dev
 - [x] **Terminology: "KPI Cards" → "Overview Cards"**; People count now shows "members" (no misleading "active")
 
 ### ⚠️ Pending / Not Yet Applied
-- [ ] **CI auto-deploy** — `.github/workflows/deploy.yml` exists locally but untracked; fix paths for repo-root layout before committing
 - [ ] Consider documenting the "invite vs Add person" rule in Guide page
 - [ ] 07-26 / 07-24 historical docs still reference old file structure (historical snapshots; left as-is)
 
@@ -211,6 +210,7 @@ C:\Users\Joy\Dhara Team Dashboard\
 ## Changelog
 
 ### 2026-08-05
+- **CI:** enabled auto-deploy on push to `main` (`.github/workflows/deploy.yml`, repo-root layout) — manual `npm run deploy` no longer needed
 - **DB:** applied + verified `people_email_unique` UNIQUE constraint on `people.email` (no duplicates); `schema.sql` → `email TEXT UNIQUE`
 - **DB:** dropped unused `settings` table (team name/currency page never built) — schema.sql, private-rls.sql, and live DB updated
 - **Feature:** custom Current Phase — `src/lib/phases.js` builds options from defaults + saved values; "＋ Custom Phase…" in BMS inline editor and Projects form; Projects column filter uses dynamic options; synced across tabs + Dashboard chart
