@@ -25,6 +25,13 @@ const BUDGET_STATUS_COLORS = {
 }
 const FALLBACK = ['#3b82f6', '#8b5cf6', '#f59e0b', '#22c55e', '#14b8a6', '#94a3b8', '#ec4899', '#f97316']
 
+const phaseFill = (name) => {
+  if (PHASE_COLORS[name]) return PHASE_COLORS[name]
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
+  return FALLBACK[h % FALLBACK.length]
+}
+
 export default function Dashboard() {
   const [projects, setProjects] = useState([])
 
@@ -105,8 +112,8 @@ export default function Dashboard() {
                   labelStyle={{ fontWeight: 600, color: '#0f172a' }}
                 />
                 <Bar dataKey="value" radius={[0, 6, 6, 0]} barSize={26} label={{ position: 'right', fill: '#64748b', fontSize: 12, fontWeight: 600 }}>
-                  {phaseData.map((entry, i) => (
-                    <Cell key={i} fill={PHASE_COLORS[entry.name] || FALLBACK[i % FALLBACK.length]} />
+                  {phaseData.map((entry) => (
+                    <Cell key={entry.name} fill={phaseFill(entry.name)} />
                   ))}
                 </Bar>
               </BarChart>
