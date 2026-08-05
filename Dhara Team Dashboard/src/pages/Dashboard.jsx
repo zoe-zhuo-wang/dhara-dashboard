@@ -25,11 +25,28 @@ const BUDGET_STATUS_COLORS = {
 }
 const FALLBACK = ['#3b82f6', '#8b5cf6', '#f59e0b', '#22c55e', '#14b8a6', '#94a3b8', '#ec4899', '#f97316']
 
-const phaseFill = (name) => {
-  if (PHASE_COLORS[name]) return PHASE_COLORS[name]
-  let h = 0
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0
-  return FALLBACK[h % FALLBACK.length]
+// Assign each phase in the chart a UNIQUE color, preferring the known per-phase
+// color when it exists. Never reuses a color already shown in this chart.
+function buildPhaseFill(names) {
+  const map = {}
+  const used = new Set()
+  names.forEach((name) => {
+    if (PHASE_COLORS[name]) {
+      map[name] = PHASE_COLORS[name]
+      used.add(PHASE_COLORS[name])
+      return
+    }
+    const free = FALLBACK.find(c => !used.has(c))
+    if (free) {
+      map[name] = free
+      used.add(free)
+      return
+    }
+    const hue = (Object.keys(map).length * 137.508) % 360
+    map[name] = `hsl(${hue.toFixed(1)}, 70%, 55%)`
+    used.add(map[name])
+  })
+  return (name) => map[name]
 }
 
 export default function Dashboard() {
@@ -58,6 +75,7 @@ export default function Dashboard() {
     .sort((a, b) => b.value - a.value)
   const phaseMax = Math.max(...phaseData.map(d => d.value), 0)
   const phaseDomain = [0, Math.max(phaseMax + Math.ceil(phaseMax / 10) + 1, 10)]
+  const phaseFill = buildPhaseFill(phaseData.map(d => d.name))
 
   const fundingBudgets = {}
   projects.forEach(p => {
