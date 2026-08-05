@@ -7,15 +7,13 @@ export default function InviteModal({ onClose }) {
   const [teamGroup, setTeamGroup] = useState('Regular Team')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [inviteLink, setInviteLink] = useState('')
-  const [copied, setCopied] = useState(false)
+  const [sentEmail, setSentEmail] = useState('')
 
   const invite = async () => {
     if (!email) { setError('Email is required'); return }
     setLoading(true)
     setError('')
-    setInviteLink('')
-    setCopied(false)
+    setSentEmail('')
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -30,24 +28,12 @@ export default function InviteModal({ onClose }) {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Failed to send invite')
-      setEmail('')
-      setName('')
-      if (data.inviteLink) {
-        setInviteLink(data.inviteLink)
-      } else {
-        setError('Invite created. It will be emailed shortly, or the person can log in directly.')
-      }
+      setSentEmail(data.email || email)
     } catch (err) {
       setError(err.message || 'Something went wrong')
     } finally {
       setLoading(false)
     }
-  }
-
-  const copy = async () => {
-    await navigator.clipboard.writeText(inviteLink)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -60,17 +46,25 @@ export default function InviteModal({ onClose }) {
 
         {error && <div style={{ marginBottom: 16, padding: '8px 12px', borderRadius: 6, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 13 }}>{error}</div>}
 
-        {inviteLink ? (
-          <div>
-            <label style={labelStyle}>Share this invite link with the person</label>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-              <input readOnly value={inviteLink} style={{ flex: 1, fontSize: 12 }} onFocus={e => e.target.select()} />
-              <button className="btn-primary" onClick={copy} style={{ flexShrink: 0 }}>
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
+        {sentEmail ? (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: '50%', background: '#f0fdf4',
+              display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 16
+            }}>
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17l-5-5" stroke="#16a34a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </div>
+            <h4 style={{ margin: '0 0 8px', fontSize: 16 }}>Invitation Sent!</h4>
+            <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 13 }}>
+              {sentEmail} will receive an email with a link to set their password.
+            </p>
+            <button className="btn-primary" onClick={onClose} style={{ marginTop: 20, padding: '10px 32px' }}>Done</button>
           </div>
         ) : (
+          <></>
+        )}
+
+        {!sentEmail && (
           <>
             <div style={{ display: 'grid', gap: 14 }}>
               <div>

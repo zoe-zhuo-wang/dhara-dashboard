@@ -32,7 +32,8 @@ Deno.serve(async (req) => {
   }
 
   const authHeader = req.headers.get('Authorization') || ''
-  const { data: auth, error: authError } = await supabaseAdmin.auth.getUser(authHeader)
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader
+  const { data: auth, error: authError } = await supabaseAdmin.auth.getUser(token)
   if (authError || !auth.user) {
     return json({ error: 'Unauthorized' }, 401)
   }
@@ -53,21 +54,22 @@ Deno.serve(async (req) => {
     return json({ error: 'A valid email is required' }, 400)
   }
 
-  const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-    type: 'invite',
-    email: email.toLowerCase().trim(),
-    data: {
-      full_name: name ? name.trim() : undefined,
-      team_group: teamGroup && teamGroup !== 'General' ? teamGroup : 'Regular Team'
-    },
-    redirectTo: `${APP_ORIGIN}/#/`
-  })
+  const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+    email.toLowerCase().trim(),
+    {
+      data: {
+        full_name: name ? name.trim() : undefined,
+        team_group: teamGroup && teamGroup !== 'General' ? teamGroup : 'Regular Team'
+      },
+      redirectTo: `${APP_ORIGIN}/#/`
+    }
+  )
 
   if (error) {
     return json({ error: error.message }, 400)
   }
 
-  const inviteLink = (data.properties as { action_link?: string } | undefined)?.action_link || ''
+  const actionLink = (data.user as unknown as { properties?: { action_link?: string } })?.properties?.action_link
 
-  return json({ email: email.toLowerCase().trim(), inviteLink })
+  return json({ email: email.toLowerCase().trim(), sent: true, inviteLink: actionLink || '' })
 })
