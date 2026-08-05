@@ -26,8 +26,13 @@ export default function InviteModal({ onClose }) {
         },
         body: JSON.stringify({ email, name, team_group: teamGroup })
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to send invite')
+      let data = {}
+      try {
+        data = await res.json()
+      } catch {
+        data = { error: (await res.text()) || 'Empty response' }
+      }
+      if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
       setSentEmail(data.email || email)
     } catch (err) {
       setError(err.message || 'Something went wrong')

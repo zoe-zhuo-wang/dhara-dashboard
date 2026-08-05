@@ -1,5 +1,17 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
+function decodeJwtRole(token: string): string | null {
+  try {
+    const parts = token.split('.')
+    if (parts.length !== 3) return null
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+    const payload = JSON.parse(atob(b64))
+    return payload?.role ?? null
+  } catch {
+    return null
+  }
+}
+
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL')!,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
@@ -33,9 +45,9 @@ Deno.serve(async (req) => {
 
   const authHeader = req.headers.get('Authorization') || ''
   const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader
-  const { data: auth, error: authError } = await supabaseAdmin.auth.getUser(token)
-  if (authError || !auth.user) {
-    return json({ error: 'Unauthorized' }, 401)
+  const role = decodeJwtRole(token)
+  if (role !== 'authenticated') {
+    return json({ error: 'Unauthorized', role: role || 'none' }, 401)
   }
 
   let email: string | undefined
@@ -54,22 +66,36 @@ Deno.serve(async (req) => {
     return json({ error: 'A valid email is required' }, 400)
   }
 
-  const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-    email.toLowerCase().trim(),
-    {
-      data: {
-        full_name: name ? name.trim() : undefined,
-        team_group: teamGroup && teamGroup !== 'General' ? teamGroup : 'Regular Team'
-      },
-      redirectTo: `${APP_ORIGIN}/#/`
-    }
-  )
-
-  if (error) {
-    return json({ error: error.message }, 400)
+  const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 })
+  const existing = users?.find(u => u.email?.toLowerCase() === email.toLowerCase())
+  if (existing) {
+    return json({
+      error: 'This email already has an account. They can sign in directly, or use "Forgot password?" to reset.',
+      alreadyExists: true
+    }, 400)
+  }
+  if (listErr) {
+    return json({ error: `Could not check existing users: ${listErr.message}` }, 500)
   }
 
-  const actionLink = (data.user as unknown as { properties?: { action_link?: string } })?.properties?.action_link
+  try {
+    const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+      email.toLowerCase().trim(),
+      {
+        data: {
+          full_name: name ? name.trim() : undefined,
+          team_group: teamGroup && teamGroup !== 'General' ? teamGroup : 'Regular Team'
+        },
+        redirectTo: `${APP_ORIGIN}/#/`
+      }
+    )
 
-  return json({ email: email.toLowerCase().trim(), sent: true, inviteLink: actionLink || '' })
+    if (error) {
+      return json({ error: error.message }, 400)
+    }
+
+    return json({ email: email.toLowerCase().trim(), sent: true })
+  } catch (err) {
+    return json({ error: err?.message || 'Invite failed' }, 500)
+  }
 })
