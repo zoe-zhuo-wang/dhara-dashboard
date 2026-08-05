@@ -32,6 +32,7 @@ export default function Guide() {
           <li><strong>Edit / Delete</strong> — Use the buttons in the Actions column on the right.</li>
           <li><strong>View</strong> — Click <em>View</em> to see all project details in a read-only modal.</li>
           <li><strong>Customize Columns</strong> — Click the <em>Columns</em> button to show or hide fields. Your most-used columns are on by default.</li>
+          <li><strong>Custom Phase</strong> — The Current Phase dropdown has a <em>＋ Custom Phase…</em> option if the preset phases don't cover your project. Custom phases automatically appear everywhere (BMS, filters, Dashboard chart).</li>
           <li><strong>Filter & Search</strong> — Use the dropdown filters in each column header, or type in the search box to find projects quickly.</li>
           <li><strong>Export to Excel</strong> — Click <em>Export Excel</em> to download the current filtered list. Each export gets a timestamp so you never overwrite a file.</li>
         </ul>
@@ -59,7 +60,8 @@ export default function Guide() {
         <p style={{ marginTop: 0 }}>Designed for weekly project progress reviews. Quick edits and a clean, status-focused layout.</p>
         <ul>
           <li><strong>Filter by DT Focal</strong> — Pick one person to see only their projects.</li>
-          <li><strong>Inline Edit</strong> — Click a project's Current Phase or Overall Status badge to change it on the spot.</li>
+          <li><strong>Inline Edit</strong> — Click a project's Current Phase or Overall Status badge to change it on the spot. Current Phase also supports <em>＋ Custom Phase…</em>.<br/>
+          <span style={{ color: '#94a3b8' }}>Tip: custom values are synced across the app — once added, they show up in other tabs and the Dashboard chart (each phase gets its own color).</span></li>
           <li><strong>Rich Text Updates</strong> — Use Bold, Italic, Underline, font color, and highlight in the Key Updates editor.</li>
           <li><strong>Auto-save</strong> — Changes are saved instantly and reflected on the Projects page. A green toast confirms success.</li>
         </ul>
