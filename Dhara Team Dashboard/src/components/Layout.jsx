@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import InviteModal from './InviteModal'
 
 const navItems = [
   { path: '/guide', label: 'Guide', icon: (
@@ -22,6 +23,7 @@ const navItems = [
 
 export default function Layout({ children, user }) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [showInvite, setShowInvite] = useState(false)
   const navigate = useNavigate()
 
   const handleLogout = async () => {
@@ -126,6 +128,11 @@ export default function Layout({ children, user }) {
           >
             <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 5h14M3 10h14M3 15h14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
           </button>
+
+          <button className="btn-secondary" onClick={() => setShowInvite(true)} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/></svg>
+            Invite
+          </button>
         </header>
 
         {/* Content */}
@@ -133,6 +140,8 @@ export default function Layout({ children, user }) {
           {children}
         </main>
       </div>
+
+      {showInvite && <InviteModal onClose={() => setShowInvite(false)} />}
     </div>
   )
 }
