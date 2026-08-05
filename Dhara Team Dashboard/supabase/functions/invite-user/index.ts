@@ -66,18 +66,6 @@ Deno.serve(async (req) => {
     return json({ error: 'A valid email is required' }, 400)
   }
 
-  const { data: { users }, error: listErr } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 })
-  const existing = users?.find(u => u.email?.toLowerCase() === email.toLowerCase())
-  if (existing) {
-    return json({
-      error: 'This email already has an account. They can sign in directly, or use "Forgot password?" to reset.',
-      alreadyExists: true
-    }, 400)
-  }
-  if (listErr) {
-    return json({ error: `Could not check existing users: ${listErr.message}` }, 500)
-  }
-
   try {
     const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
       email.toLowerCase().trim(),
@@ -91,11 +79,22 @@ Deno.serve(async (req) => {
     )
 
     if (error) {
-      return json({ error: error.message }, 400)
+      const msg = error.message || ''
+      if (/already (registered|exist)/i.test(msg) || /email.*(exist|taken)/i.test(msg)) {
+        return json({
+          error: 'This email already has an account. They can sign in directly, or use "Forgot password?" to reset.',
+          alreadyExists: true
+        }, 400)
+      }
+      return json({ error: msg || 'Invite failed' }, 400)
     }
 
     return json({ email: email.toLowerCase().trim(), sent: true })
   } catch (err) {
-    return json({ error: err?.message || 'Invite failed' }, 500)
+    const msg = err?.message || 'Invite failed'
+    if (/upstream connect error|connection refused|fetch failed/i.test(msg)) {
+      return json({ error: 'Supabase auth service is temporarily unavailable. Please try again in a few minutes.' }, 503)
+    }
+    return json({ error: msg }, 500)
   }
 })
