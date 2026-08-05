@@ -61,7 +61,6 @@ npm run dev
 | people | Team members with email/skills/team_group (may have no login account) |
 | project_members | Many-to-many (currently unused / dead code) |
 | allocations | Monthly Man-Day tracking (page removed, table kept) |
-| settings | Key-value app configuration |
 
 ### Schema Location
 - `supabase/schema.sql` — Full schema
@@ -79,7 +78,6 @@ npm run dev
 | `/people` | People | Team member cards with team filter |
 | `/bms` | BMS (Presentation) | Weekly meeting review with inline edit |
 | `/guide` | Guide | User guide with numbered workflow sections |
-| `/settings` | Settings | Team config (not yet built) |
 
 ---
 
@@ -106,8 +104,7 @@ npm run dev
 - [x] **Terminology: "KPI Cards" → "Overview Cards"** (statistics, not KPIs)
 
 ### ⚠️ Pending / Not Yet Applied
-- [ ] **Verify in SQL Editor:** `people_email_unique` constraint applied? (`ALTER TABLE people ADD CONSTRAINT people_email_unique UNIQUE (email);`) — frontend enforces uniqueness regardless
-- [ ] Settings page (team name, currency)
+- [x] **`people_email_unique` UNIQUE constraint applied on `people.email`** (verified 2026-08-05; no duplicates) — see `supabase/migrations/20260805_people_email_unique.sql`
 - [ ] Consider documenting the "invite vs Add person" rule in Guide page
 
 ### 🔜 Future Ideas
@@ -188,13 +185,16 @@ C:\Users\Joy\Dhara Team Dashboard\
 │       ├── People.jsx            # Team cards + success toast
 │       ├── Presentation.jsx      # BMS weekly review view
 │       ├── Guide.jsx             # User guide ("Overview" terminology)
-│       └── Settings.jsx          # (placeholder)
 └── dist/
 ```
 
 ---
 
 ## Changelog
+
+### 2026-08-05
+- **DB:** added `supabase/migrations/20260805_people_email_unique.sql` — apply + verify `people_email_unique` UNIQUE constraint on `people.email` (was missing); `schema.sql` updated to `email TEXT UNIQUE`
+- **Removed unused Settings:** `settings` table had no UI (team name / currency page was never built). Dropped table + policies from `schema.sql` / `private-rls.sql`; live DB drop in `supabase/migrations/20260805_drop_settings_table.sql`
 
 ### 2026-07-31
 - **Docs:** added `Dhara Team Dashboard - 技术概览与数据安全.md` — plain-language summary of tech implementation + data security design

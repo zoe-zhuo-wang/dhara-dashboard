@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS people (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
-  email TEXT,
+  email TEXT UNIQUE,
   team_group TEXT NOT NULL DEFAULT 'General',
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -68,14 +68,6 @@ CREATE TABLE IF NOT EXISTS allocations (
   UNIQUE(project_id, person_id, year, month)
 );
 
--- 6. Settings table
-CREATE TABLE IF NOT EXISTS settings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  key TEXT UNIQUE NOT NULL,
-  value TEXT DEFAULT '',
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
 -- ============================================
 -- Row Level Security (RLS)
 -- ============================================
@@ -85,7 +77,6 @@ ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE people ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE allocations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE settings ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: users can read all, update own
 CREATE POLICY "Profiles: anyone can read" ON profiles FOR SELECT USING (true);
@@ -116,10 +107,6 @@ CREATE POLICY "Allocations: authenticated can insert" ON allocations FOR INSERT 
 CREATE POLICY "Allocations: authenticated can update" ON allocations FOR UPDATE TO authenticated USING (true);
 CREATE POLICY "Allocations: authenticated can delete" ON allocations FOR DELETE TO authenticated USING (true);
 
--- Settings: authenticated users can read, admin can write
-CREATE POLICY "Settings: authenticated can read" ON settings FOR SELECT TO authenticated USING (true);
-CREATE POLICY "Settings: authenticated can all" ON settings FOR ALL TO authenticated USING (true);
-
 -- ============================================
 -- Trigger: auto-create profile on signup
 -- ============================================
@@ -141,16 +128,6 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION handle_new_user();
-
--- ============================================
--- Default settings
--- ============================================
-
-INSERT INTO settings (key, value) VALUES
-  ('team_name', 'Dhara''s Team'),
-  ('currency', 'USD'),
-  ('working_days_per_month', '22')
-ON CONFLICT (key) DO NOTHING;
 
 -- ============================================
 -- v1.1: DT Focal + Funding Type
