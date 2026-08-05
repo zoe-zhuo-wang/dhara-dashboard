@@ -25,15 +25,15 @@ const BUDGET_STATUS_COLORS = {
 }
 const FALLBACK = ['#3b82f6', '#8b5cf6', '#f59e0b', '#22c55e', '#14b8a6', '#94a3b8', '#ec4899', '#f97316']
 
-// Assign each phase in the chart a UNIQUE color, preferring the known per-phase
-// color when it exists. Never reuses a color already shown in this chart.
+// Assign each phase in the chart a UNIQUE color. Known phases keep their
+// defined color; custom phases get a color never used by any known phase in
+// this chart nor by another custom phase.
 function buildPhaseFill(names) {
   const map = {}
-  const used = new Set()
+  const used = new Set(names.filter(n => PHASE_COLORS[n]).map(n => PHASE_COLORS[n]))
   names.forEach((name) => {
     if (PHASE_COLORS[name]) {
       map[name] = PHASE_COLORS[name]
-      used.add(PHASE_COLORS[name])
       return
     }
     const free = FALLBACK.find(c => !used.has(c))
