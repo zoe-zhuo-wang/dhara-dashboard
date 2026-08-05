@@ -6,7 +6,7 @@ import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
 import Projects from './pages/Projects'
 import People from './pages/People'
-import Presentation from './pages/Presentation'
+import BMS from './pages/BMS'
 import Guide from './pages/Guide'
 import Layout from './components/Layout'
 import './index.css'
@@ -86,7 +86,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/people" element={<People />} />
-          <Route path="/bms" element={<Presentation />} />
+          <Route path="/bms" element={<BMS />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Layout>

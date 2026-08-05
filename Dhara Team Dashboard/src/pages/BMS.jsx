@@ -17,7 +17,7 @@ function Badge({ bg, text, children }) {
   )
 }
 
-export default function Presentation() {
+export default function BMS() {
   const [projects, setProjects] = useState([])
   const [people, setPeople] = useState([])
   const [filter, setFilter] = useState('all')

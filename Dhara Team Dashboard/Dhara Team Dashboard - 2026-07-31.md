@@ -183,7 +183,7 @@ C:\Users\Joy\Dhara Team Dashboard\
 │       ├── Dashboard.jsx
 │       ├── Projects.jsx          # Project CRUD + DT Focal multi-select
 │       ├── People.jsx            # Team cards + success toast
-│       ├── Presentation.jsx      # BMS weekly review view
+│       ├── BMS.jsx               # BMS weekly review view
 │       ├── Guide.jsx             # User guide ("Overview" terminology)
 └── dist/
 ```
