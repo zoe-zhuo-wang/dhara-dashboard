@@ -97,7 +97,7 @@ npm run dev
 - [x] People — CRUD cards, team filter (Regular/ISS), email uniqueness validation (frontend) + DB UNIQUE constraint applied
 - [x] BMS (BMS.jsx) — DT Focal filter, inline edit phase/status (with custom phase), rich text key updates, auto-save with success toast
 - [x] Guide — numbered workflow cards, incl. custom-phase usage notes
-- [x] Invite team member (top-right button)
+- [x] Invite team member (top-right button) — any signed-in member can invite; account created via Supabase Edge Function (service role), invite link returned & shareable
 - [x] Sidebar with SVG icons + collapsible
 - [x] Quick Add Person from within Project form
 - [x] Light mode corporate design
@@ -151,6 +151,12 @@ npm run dev
 - Frontend checks via `supabase.from('people').ilike('email', ...)` before insert (People page + Quick Add modal)
 - DB-level `people_email_unique` UNIQUE constraint applied + verified (2026-08-05)
 
+### Invite via Edge Function (restored 2026-08-05)
+- Creating auth accounts needs the **service_role key**, which must never ship in the browser → done in a Supabase Edge Function `invite-user`
+- Frontend (`InviteModal.jsx`, top-right button) POSTs email/name/team to the function with the caller's login JWT; the function verifies the caller (returns `401` if not signed in), then `auth.admin.generateLink({ type: 'invite' })` with the service role creates the account and returns an invite link
+- The inviter copies the invite link and shares it; the person sets their own password; first login triggers the existing Account ↔ People auto-merge
+- No self-signup reopened — access stays **invite-only**; all signed-in members have the invite button (not just the owner)
+
 ---
 
 ## Migrations (2026-08-05, run in Supabase SQL Editor)
@@ -177,6 +183,8 @@ C:\Users\Joy\Dhara Team Dashboard\
 │   ├── schema.sql               # Full DB schema
 │   ├── private-rls.sql          # CURRENT RLS (idempotent)
 │   ├── fix-rls.sql              # Older RLS migration (superseded)
+│   ├── functions/
+│   │   └── invite-user/         # Edge Function: service-role invite (deployed)
 │   └── migrations/
 │       ├── 20260723_add_focal_and_funding.sql
 │       ├── 20260804_drop_people_unused_columns.sql
@@ -193,7 +201,8 @@ C:\Users\Joy\Dhara Team Dashboard\
 │   │   ├── phases.js             # dynamic phase options (defaults + saved values)
 │   │   └── sanitize.js           # rich-text XSS sanitizer
 │   ├── components/
-│   │   └── Layout.jsx            # Sidebar + topbar + invite modal
+│   │   ├── Layout.jsx            # Sidebar + topbar + Invite button
+│   │   └── InviteModal.jsx       # Invite form → edge function → share link
 │   └── pages/
 │       ├── Login.jsx             # Sign in + Create Account
 │       ├── ResetPassword.jsx
@@ -219,6 +228,7 @@ C:\Users\Joy\Dhara Team Dashboard\
 - **UI:** People count label "active members" → "members"
 - **Docs:** Guide page updated with custom-phase notes
 - **Deliverable:** created `Dhara_Team_Dashboard_Overview.pptx` (3-slide EN summary: what it is / vs Streamlit+Excel / build+storage+security)
+- **Feature (restored):** Invite button back in top bar for **all signed-in members** — `src/components/InviteModal.jsx` + Supabase Edge Function `invite-user` (service-role account creation, returns shareable invite link; caller JWT verified, anonymous = 401). Deployed via Management API (no self-signup; access stays invite-only), commit `87227f7`
 - Deployed to GitHub Pages (multiple builds)
 
 ### 2026-07-31
