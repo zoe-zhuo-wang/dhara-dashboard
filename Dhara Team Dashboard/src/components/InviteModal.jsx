@@ -8,12 +8,16 @@ export default function InviteModal({ onClose }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [sentEmail, setSentEmail] = useState('')
+  const [inviteLink, setInviteLink] = useState('')
+  const [copied, setCopied] = useState(false)
 
   const invite = async () => {
     if (!email) { setError('Email is required'); return }
     setLoading(true)
     setError('')
     setSentEmail('')
+    setInviteLink('')
+    setCopied(false)
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
@@ -34,11 +38,18 @@ export default function InviteModal({ onClose }) {
       }
       if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`)
       setSentEmail(data.email || email)
+      setInviteLink(data.inviteLink || '')
     } catch (err) {
       setError(err.message || 'Something went wrong')
     } finally {
       setLoading(false)
     }
+  }
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(inviteLink)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
   }
 
   return (
@@ -63,6 +74,17 @@ export default function InviteModal({ onClose }) {
             <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 13 }}>
               {sentEmail} will receive an email with a link to set their password.
             </p>
+            {inviteLink && (
+              <div style={{ textAlign: 'left', marginTop: 20 }}>
+                <label style={labelStyle}>Backup invite link (share if the email doesn't arrive)</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input readOnly value={inviteLink} style={{ flex: 1, fontSize: 12 }} onFocus={e => e.target.select()} />
+                  <button className="btn-secondary" onClick={copy} style={{ flexShrink: 0 }}>
+                    {copied ? 'Copied!' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+            )}
             <button className="btn-primary" onClick={onClose} style={{ marginTop: 20, padding: '10px 32px' }}>Done</button>
           </div>
         ) : (

@@ -1,5 +1,3 @@
-import { createClient } from 'jsr:@supabase/supabase-js@2'
-
 function decodeJwtRole(token: string): string | null {
   try {
     const parts = token.split('.')
@@ -12,11 +10,8 @@ function decodeJwtRole(token: string): string | null {
   }
 }
 
-const supabaseAdmin = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  { auth: { persistSession: false, autoRefreshToken: false } }
-)
+const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 const APP_ORIGIN = 'https://zoe-zhuo-wang.github.io/dhara-dashboard'
 
@@ -66,35 +61,49 @@ Deno.serve(async (req) => {
     return json({ error: 'A valid email is required' }, 400)
   }
 
-  try {
-    const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
-      email.toLowerCase().trim(),
-      {
+  const res = await fetch(
+    `${SUPABASE_URL}/auth/v1/admin/invite?redirect_to=${encodeURIComponent(`${APP_ORIGIN}/#/`)}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json;charset=UTF-8',
+        apikey: SERVICE_KEY,
+        Authorization: `Bearer ${SERVICE_KEY}`,
+        'X-Supabase-Api-Version': '2024-01-01'
+      },
+      body: JSON.stringify({
+        email: email.toLowerCase().trim(),
         data: {
           full_name: name ? name.trim() : undefined,
           team_group: teamGroup && teamGroup !== 'General' ? teamGroup : 'Regular Team'
-        },
-        redirectTo: `${APP_ORIGIN}/#/`
-      }
-    )
-
-    if (error) {
-      const msg = error.message || ''
-      if (/already (registered|exist)/i.test(msg) || /email.*(exist|taken)/i.test(msg)) {
-        return json({
-          error: 'This email already has an account. They can sign in directly, or use "Forgot password?" to reset.',
-          alreadyExists: true
-        }, 400)
-      }
-      return json({ error: msg || 'Invite failed' }, 400)
+        }
+      })
     }
+  )
 
-    return json({ email: email.toLowerCase().trim(), sent: true })
-  } catch (err) {
-    const msg = err?.message || 'Invite failed'
-    if (/upstream connect error|connection refused|fetch failed/i.test(msg)) {
-      return json({ error: 'Supabase auth service is temporarily unavailable. Please try again in a few minutes.' }, 503)
+  if (!res.ok) {
+    let msg = `Invite request failed (${res.status})`
+    try {
+      const body = await res.json()
+      if (body?.msg || body?.message) {
+        msg = body.msg || body.message
+      } else if (body && typeof body === 'object' && Object.keys(body).length === 0) {
+        msg = 'Supabase auth service is temporarily unavailable. Please try again in a few minutes.'
+      }
+    } catch {
+      /* keep default */
     }
-    return json({ error: msg }, 500)
+    if (/already (registered|exist)/i.test(msg) || /email.*(exist|taken)/i.test(msg)) {
+      return json({
+        error: 'This email already has an account. They can sign in directly, or use "Forgot password?" to reset.',
+        alreadyExists: true
+      }, 400)
+    }
+    return json({ error: msg }, res.status >= 500 ? 503 : res.status)
   }
+
+  const data = await res.json()
+  const actionLink = data?.properties?.action_link || ''
+
+  return json({ email: email.toLowerCase().trim(), sent: true, inviteLink: actionLink })
 })
