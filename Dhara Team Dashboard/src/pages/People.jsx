@@ -98,7 +98,7 @@ export default function People() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
           <h2 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 4px' }}>People</h2>
-          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 13 }}>{activeCount} active members</p>
+          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: 13 }}>{activeCount} members</p>
         </div>
         <button className="btn-primary" onClick={openNew}>+ Add Person</button>
       </div>
