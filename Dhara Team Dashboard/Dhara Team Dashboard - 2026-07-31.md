@@ -58,7 +58,7 @@ npm run dev
 |-------|---------|
 | profiles | User profiles (extends auth.users, has `role` column, unused for now) |
 | projects | Project records with budget/status/funding_type/dt_focal_id |
-| people | Team members with email/skills/team_group (may have no login account) |
+| people | Team members with email/team_group (may have no login account) |
 | project_members | Many-to-many (currently unused / dead code) |
 | allocations | Monthly Man-Day tracking (page removed, table kept) |
 
