@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
+const PROXY_URL = import.meta.env.VITE_AUTH_PROXY_URL || ''
+
 export default function Login({ notice }) {
   const [mode, setMode] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [passcode, setPasscode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [resetSent, setResetSent] = useState(false)
@@ -18,6 +21,38 @@ export default function Login({ notice }) {
     setSignupSent(false)
 
     try {
+      if (mode === 'passcode') {
+        if (!PROXY_URL) throw new Error('Passcode sign-in is not configured (missing VITE_AUTH_PROXY_URL).')
+        const res = await fetch(PROXY_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ passphrase: passcode }),
+        })
+        const data = await res.json()
+        if (!res.ok || !data.access_token) throw new Error(data?.error || 'Passcode sign-in failed.')
+        const payload = JSON.parse(atob(data.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+        // Put the minted JWT into the existing Supabase client so all data
+        // calls keep going straight to PostgREST under the same RLS.
+        await supabase.auth.setSession({
+          access_token: data.access_token,
+          refresh_token: '',
+          expires_in: data.expires_in || 43200,
+          expires_at: payload.exp,
+          token_type: 'bearer',
+          user: {
+            id: payload.sub,
+            aud: 'authenticated',
+            role: 'authenticated',
+            email: payload.email,
+            app_metadata: {},
+            user_metadata: {},
+            created_at: new Date(payload.iat * 1000).toISOString(),
+            updated_at: new Date(payload.iat * 1000).toISOString(),
+          },
+        })
+        return
+      }
+
       if (mode === 'signup') {
         const { data: ok } = await supabase.rpc('is_whitelisted', { p_email: email })
         if (!ok) {
@@ -73,7 +108,7 @@ export default function Login({ notice }) {
         <div style={{ display: 'flex', gap: 4, background: 'var(--bg-white)', border: '1px solid var(--border)', borderRadius: 8, padding: 3, marginBottom: 24 }}>
           {[
             { key: 'signin', label: 'Sign In' },
-            { key: 'signup', label: 'Create Account' },
+            { key: 'passcode', label: 'Passcode' },
           ].map(t => (
             <button
               key={t.key}
@@ -100,22 +135,44 @@ export default function Login({ notice }) {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@company.com"
               required
-              style={{ width: '100%' }}
+              disabled={mode === 'passcode'}
+              style={{ width: '100%', opacity: mode === 'passcode' ? 0.5 : 1 }}
             />
           </div>
 
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              minLength={8}
-              style={{ width: '100%' }}
-            />
-          </div>
+          {mode !== 'passcode' ? (
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                minLength={8}
+                style={{ width: '100%' }}
+              />
+            </div>
+          ) : (
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', marginBottom: 6, fontSize: 13, fontWeight: 500, color: 'var(--text-secondary)' }}>Team passcode</label>
+              <input
+                type="password"
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value)}
+                placeholder="Shared team passcode"
+                required
+                autoComplete="current-password"
+                style={{ width: '100%' }}
+              />
+            </div>
+          )}
+
+          {mode === 'passcode' && (
+            <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+              Temporary sign-in while Supabase login is recovering. You'll use the shared team passcode.
+            </p>
+          )}
 
           {mode === 'signup' && (
             <p style={{ margin: '0 0 16px', fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.6 }}>
@@ -173,7 +230,7 @@ export default function Login({ notice }) {
             disabled={loading}
             style={{ width: '100%', padding: '12px 0', fontSize: 15 }}
           >
-            {loading ? 'Loading...' : mode === 'signup' ? 'Create Account' : 'Sign In'}
+            {loading ? 'Loading...' : mode === 'signup' ? 'Create Account' : mode === 'passcode' ? 'Sign In' : 'Sign In'}
           </button>
         </form>
 
@@ -199,7 +256,9 @@ export default function Login({ notice }) {
         <p style={{ textAlign: 'center', color: 'var(--text-secondary)', fontSize: 12, marginTop: 24 }}>
           {mode === 'signup'
             ? 'Need access? Ask a team member to add your email to the whitelist (People → Whitelist).'
-            : 'Access is by whitelist. Ask a team member to add you if your email is not approved yet.'}
+            : mode === 'passcode'
+              ? 'Passcode sign-in is a temporary workaround while Supabase login recovers.'
+              : 'Access is by whitelist. Ask a team member to add you if your email is not approved yet.'}
         </p>
       </div>
     </div>

@@ -28,6 +28,30 @@ npm run dev
 
 Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env` (falls back to the values in `src/lib/supabase.js`).
 
+## Passcode sign-in (Supabase Auth outage workaround)
+
+When Supabase Auth (GoTrue) is down, the team can sign in with a shared passcode that
+mints a valid signed JWT (`role=authenticated`) without hitting GoTrue at all. It lives
+in `api/auth.js`, a Vercel serverless function. All data calls still go straight to
+PostgREST under the normal RLS policies.
+
+Frontend env (`src/pages/Login.jsx`):
+
+- `VITE_AUTH_PROXY_URL` — full URL of the deployed `api/auth` endpoint.
+
+Vercel function env (Vercel → Project → Settings → Environment Variables):
+
+- `ENABLE_AUTH_PROXY=1`
+- `AUTH_PASSPHRASE=<shared team passcode>`
+- `SUPABASE_JWT_SECRET=<project JWT secret from Supabase Dashboard > Settings > API>`
+- `SUPABASE_REF=nqygyktioiwabvyfziev` (optional)
+- `AUTH_SUBJECT=<user id to impersonate>` (optional, defaults to wangzhuo18)
+- `AUTH_EMAIL=<email>` (optional)
+- `AUTH_TTL_SECS=43200` (optional, 12h default)
+
+Disable by removing `ENABLE_AUTH_PROXY` or setting it to anything other than `1`;
+the endpoint returns 404 and the normal Supabase login is used again.
+
 ## Scripts
 
 - `npm run dev` — local dev server
