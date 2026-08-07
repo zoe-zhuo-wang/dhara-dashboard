@@ -1,11 +1,10 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { PHASE_OPTIONS, OVERALL_STATUS_OPTIONS, phaseColor, overallColor } from '../lib/constants'
-import { fetchPhaseOptions } from '../lib/phases'
 import { updatesRows } from '../lib/keyUpdates'
 import RichEditor from '../components/RichEditor'
 import KeyUpdatesTable from '../components/KeyUpdatesTable'
-import { isDemo, demoProjects, demoPeople, demoPhaseOptions } from '../lib/demoData'
+import { isDemo, demoProjects, demoPeople, demoRead } from '../lib/demoData'
 
 function Badge({ bg, text, children }) {
   return (
@@ -32,21 +31,15 @@ export default function BMS() {
 
   const loadAll = async () => {
     setLoading(true)
-    if (isDemo) {
-      setProjects(demoProjects)
-      setPeople(demoPeople)
-      setPhaseOptions(demoPhaseOptions())
-      setLoading(false)
-      return
-    }
-    const [projRes, peopleRes, phaseOpts] = await Promise.all([
-      supabase.from('projects').select('*').order('created_at', { ascending: false }),
-      supabase.from('people').select('id, name'),
-      fetchPhaseOptions(),
+    const [proj, people] = await Promise.all([
+      demoRead(() => supabase.from('projects').select('*').order('created_at', { ascending: false }), demoProjects),
+      demoRead(() => supabase.from('people').select('id, name'), demoPeople),
     ])
-    setProjects(projRes.data || [])
-    setPeople(peopleRes.data || [])
-    setPhaseOptions(phaseOpts)
+    setProjects(proj || [])
+    setPeople(people || [])
+    const custom = [...new Set((proj || []).map(p => p.current_phase).filter(Boolean))]
+      .filter(p => !PHASE_OPTIONS.includes(p))
+    setPhaseOptions([...PHASE_OPTIONS, ...custom])
     setLoading(false)
   }
 

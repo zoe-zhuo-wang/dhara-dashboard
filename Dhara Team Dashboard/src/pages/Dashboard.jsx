@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { supabase } from '../lib/supabase'
-import { isDemo, demoProjects } from '../lib/demoData'
+import { demoProjects, demoRead } from '../lib/demoData'
 import { PHASE_CHART_COLORS, CUSTOM_COLORS, phaseChartColor } from '../lib/constants'
 
 const FUNDING_COLORS = {
@@ -45,11 +45,10 @@ export default function Dashboard() {
   useEffect(() => { loadProjects() }, [])
 
   const loadProjects = async () => {
-    if (isDemo) {
-      setProjects(demoProjects)
-      return
-    }
-    const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false })
+    const data = await demoRead(
+      () => supabase.from('projects').select('*').order('created_at', { ascending: false }),
+      demoProjects
+    )
     setProjects(data || [])
   }
 

@@ -177,3 +177,20 @@ export function demoPhaseOptions() {
     .filter(p => !PHASE_OPTIONS.includes(p))
   return [...PHASE_OPTIONS, ...custom]
 }
+
+// Demo-mode read bridge. When ?demo=1 (no GoTrue), try to read real data from
+// PostgREST (works once demo_readonly.sql is applied: anon SELECT granted).
+// Falls back to the supplied demo data on any error or empty result so the UI
+// still renders when anon reads are not yet enabled.
+export async function demoRead(readFn, demoData) {
+  if (!isDemo) return (await readFn())?.data
+  try {
+    const { data, error } = await readFn()
+    if (error) return demoData
+    if (Array.isArray(data) && data.length) return data
+    if (data && typeof data === 'object' && data.length !== 0) return data
+    return demoData
+  } catch {
+    return demoData
+  }
+}

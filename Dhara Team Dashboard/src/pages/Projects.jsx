@@ -1,10 +1,9 @@
 ﻿import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { PHASE_OPTIONS, BUDGET_STATUS_OPTIONS, VETRA_OPTIONS, OVERALL_STATUS_OPTIONS, FUNDING_OPTIONS, BIZ_GROUP_OPTIONS, phaseColor, overallColor, fundingStyle, budgetStatusColor } from '../lib/constants'
-import { fetchPhaseOptions } from '../lib/phases'
 import { updatesToText, updatesToMarkup } from '../lib/keyUpdates'
 import KeyUpdatesTable from '../components/KeyUpdatesTable'
-import { isDemo, demoProjects, demoPeople, demoPhaseOptions } from '../lib/demoData'
+import { demoProjects, demoPeople, demoRead } from '../lib/demoData'
 
 const ALL_COLUMNS = [
   { key: 'name', label: 'Project Name', default: true, width: 200 },
@@ -61,20 +60,15 @@ export default function Projects() {
   }, [showColPicker])
 
   const loadAll = async () => {
-    if (isDemo) {
-      setProjects(demoProjects)
-      setPeople(demoPeople)
-      setPhaseOptions(demoPhaseOptions())
-      return
-    }
-    const [projRes, peopleRes, phaseOpts] = await Promise.all([
-      supabase.from('projects').select('*').order('created_at', { ascending: false }),
-      supabase.from('people').select('id, name, email').order('name'),
-      fetchPhaseOptions()
+    const [proj, people] = await Promise.all([
+      demoRead(() => supabase.from('projects').select('*').order('created_at', { ascending: false }), demoProjects),
+      demoRead(() => supabase.from('people').select('id, name, email').order('name'), demoPeople),
     ])
-    setProjects(projRes.data || [])
-    setPeople(peopleRes.data || [])
-    setPhaseOptions(phaseOpts)
+    setProjects(proj || [])
+    setPeople(people || [])
+    const custom = [...new Set((proj || []).map(p => p.current_phase).filter(Boolean))]
+      .filter(p => !PHASE_OPTIONS.includes(p))
+    setPhaseOptions([...PHASE_OPTIONS, ...custom])
   }
 
   const openNew = () => {

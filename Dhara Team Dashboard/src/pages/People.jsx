@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { isDemo, demoPeople, demoWhitelist } from '../lib/demoData'
+import { demoPeople, demoWhitelist, demoRead } from '../lib/demoData'
 import { GROUPS } from '../lib/constants'
 
 export default function People() {
@@ -17,14 +17,15 @@ export default function People() {
   useEffect(() => { loadPeople() }, [])
 
   const loadPeople = async () => {
-    if (isDemo) {
-      setPeople(demoPeople)
-      setWhitelistedEmails(new Set(demoWhitelist.map(w => (w.email || '').toLowerCase())))
-      return
-    }
-    const { data } = await supabase.from('people').select('*').order('name')
-    setPeople(data || [])
-    const { data: wl } = await supabase.from('whitelist').select('email')
+    const people = await demoRead(
+      () => supabase.from('people').select('*').order('name'),
+      demoPeople
+    )
+    setPeople(people || [])
+    const wl = await demoRead(
+      () => supabase.from('whitelist').select('email'),
+      demoWhitelist
+    )
     setWhitelistedEmails(new Set((wl || []).map(w => (w.email || '').toLowerCase())))
   }
 
