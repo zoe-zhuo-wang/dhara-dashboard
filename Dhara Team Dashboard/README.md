@@ -32,24 +32,31 @@ Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in `.env` (falls back to th
 
 When Supabase Auth (GoTrue) is down, the team can sign in with a shared passcode that
 mints a valid signed JWT (`role=authenticated`) without hitting GoTrue at all. It lives
-in `api/auth.js`, a Vercel serverless function. All data calls still go straight to
-PostgREST under the normal RLS policies.
+in `supabase/functions/mint-token`, a Supabase Edge Function. All data calls still go
+straight to PostgREST under the normal RLS policies. It runs on the `*.supabase.co`
+domain so it stays reachable from office networks (where Vercel / workers.dev are blocked).
 
 Frontend env (`src/pages/Login.jsx`):
 
-- `VITE_AUTH_PROXY_URL` — full URL of the deployed `api/auth` endpoint.
+- `VITE_AUTH_PROXY_URL` — full URL of the deployed `mint-token` function
+  (`https://<ref>.supabase.co/functions/v1/mint-token`).
 
-Vercel function env (Vercel → Project → Settings → Environment Variables):
+Edge Function env (set via `supabase secrets set`, or Dashboard > Edge Functions > mint-token > Settings):
 
-- `ENABLE_AUTH_PROXY=1`
-- `AUTH_PASSPHRASE=<shared team passcode>`
-- `SUPABASE_JWT_SECRET=<project JWT secret from Supabase Dashboard > Settings > API>`
-- `SUPABASE_REF=nqygyktioiwabvyfziev` (optional)
-- `AUTH_SUBJECT=<user id to impersonate>` (optional, defaults to wangzhuo18)
-- `AUTH_EMAIL=<email>` (optional)
-- `AUTH_TTL_SECS=43200` (optional, 12h default)
+- `ENABLE_MINT=1`
+- `MINT_AUTH_PASSPHRASE=<shared team passcode>`
+- `SUPABASE_JWT_SECRET=<project JWT secret from Supabase Dashboard > Settings > API > Legacy JWT Secret>`
+- `MINT_SUBJECT=<user id to impersonate>` (optional, defaults to wangzhuo18)
+- `MINT_EMAIL=<email>` (optional, defaults to wangzhuo18's)
+- `MINT_TTL_SECS=43200` (optional, 12h default)
 
-Disable by removing `ENABLE_AUTH_PROXY` or setting it to anything other than `1`;
+Deploy with the Supabase CLI:
+
+```bash
+supabase functions deploy mint-token --project-ref nqygyktioiwabvyfziev
+```
+
+Disable by removing `ENABLE_MINT` or setting it to anything other than `1`;
 the endpoint returns 404 and the normal Supabase login is used again.
 
 ## Scripts

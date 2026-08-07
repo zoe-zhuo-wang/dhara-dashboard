@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-const PROXY_URL = import.meta.env.VITE_AUTH_PROXY_URL || ''
+const PROXY_URL = import.meta.env.VITE_AUTH_PROXY_URL || 'https://nqygyktioiwabvyfziev.supabase.co/functions/v1/mint-token'
 
 export default function Login({ notice }) {
   const [mode, setMode] = useState('signin')
