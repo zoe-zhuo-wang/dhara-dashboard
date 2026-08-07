@@ -12,6 +12,7 @@ export default function Whitelist() {
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [missingPeople, setMissingPeople] = useState([])
+  const [highlightId, setHighlightId] = useState(null)
 
   useEffect(() => { loadWhitelist() }, [])
 
@@ -38,6 +39,19 @@ export default function Whitelist() {
     setError('')
     const email = form.email.trim().toLowerCase()
     if (!email) { setError('Email is required'); return }
+    const existing = entries.find(w => (w.email || '').toLowerCase() === email)
+    if (existing) {
+      setSearch(email)
+      setHighlightId(existing.id)
+      setTimeout(() => {
+        document.getElementById(`wl-${existing.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 100)
+      setTimeout(() => setHighlightId(null), 2500)
+      setShowModal(false)
+      setSuccessMsg(`"${existing.email}" is already in the whitelist.`)
+      setTimeout(() => setSuccessMsg(''), 5000)
+      return
+    }
     const { error } = await supabase.from('whitelist').insert({ email, note: form.note.trim(), created_by: (await supabase.auth.getUser()).data.user?.id || null })
     if (error) { setError(error.message); return }
     setShowModal(false)
@@ -122,7 +136,7 @@ export default function Whitelist() {
           </thead>
           <tbody>
             {filtered.map(w => (
-              <tr key={w.id} style={{ borderBottom: '1px solid var(--border)', opacity: w.active ? 1 : 0.55, background: w.active ? 'transparent' : 'var(--bg-white)' }}>
+              <tr key={w.id} id={`wl-${w.id}`} style={{ borderBottom: '1px solid var(--border)', opacity: w.active ? 1 : 0.55, background: highlightId === w.id ? '#fffbeb' : (w.active ? 'transparent' : 'var(--bg-white)'), transition: 'background 0.3s' }}>
                 <td style={tdStyle}>
                   <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{w.email}</div>
                 </td>
