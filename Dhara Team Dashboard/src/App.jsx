@@ -6,21 +6,34 @@ import ResetPassword from './pages/ResetPassword'
 import Dashboard from './pages/Dashboard'
 import Projects from './pages/Projects'
 import People from './pages/People'
+import Whitelist from './pages/Whitelist'
 import BMS from './pages/BMS'
 import Guide from './pages/Guide'
 import Layout from './components/Layout'
 import './index.css'
 
+const DEMO_MODE = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('demo') === '1'
+
 function App() {
-  const [user, setUser] = useState(null)
-  const [profile, setProfile] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState(DEMO_MODE ? { id: 'demo', email: 'demo@lenovo.com' } : null)
+  const [profile, setProfile] = useState(DEMO_MODE ? { full_name: 'Demo Mode', email: 'demo@lenovo.com', role: 'member' } : null)
+  const [loading, setLoading] = useState(!DEMO_MODE)
   const [recovery, setRecovery] = useState(false)
+  const [blockedMsg, setBlockedMsg] = useState('')
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    if (DEMO_MODE) return
+    const settle = (session) => {
       setUser(session?.user ?? null)
       setLoading(false)
+    }
+    const timeout = setTimeout(() => settle(null), 5000)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(timeout)
+      settle(session)
+    }).catch(() => {
+      clearTimeout(timeout)
+      settle(null)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -32,13 +45,24 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (user) {
-      supabase.from('profiles').select('*').eq('id', user.id).single()
-        .then(({ data }) => {
-          setProfile(data)
-          if (data) syncPerson(data)
-        })
-    }
+    if (DEMO_MODE || !user) return
+    let cancelled = false
+    supabase.from('whitelist').select('active').ilike('email', user.email).maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (!error && (!data || !data.active)) {
+          setBlockedMsg('Your email is not on the active whitelist. Ask a team member to add or enable it in People → Whitelist.')
+          supabase.auth.signOut()
+          return
+        }
+        setBlockedMsg('')
+        supabase.from('profiles').select('*').eq('id', user.id).single()
+          .then(({ data }) => {
+            setProfile(data)
+            if (data) syncPerson(data)
+          })
+      })
+    return () => { cancelled = true }
   }, [user])
 
   const syncPerson = async (profile) => {
@@ -70,12 +94,12 @@ function App() {
     )
   }
 
-  if (recovery) {
+  if (recovery && !DEMO_MODE) {
     return <ResetPassword onDone={() => setRecovery(false)} />
   }
 
-  if (!user) {
-    return <Login />
+  if (!user && !DEMO_MODE) {
+    return <Login notice={blockedMsg} />
   }
 
   return (
@@ -86,6 +110,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/projects" element={<Projects />} />
           <Route path="/people" element={<People />} />
+          <Route path="/whitelist" element={<Whitelist />} />
           <Route path="/bms" element={<BMS />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

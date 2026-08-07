@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
+import { isDemo, demoPeople, demoWhitelist } from '../lib/demoData'
 import { GROUPS } from '../lib/constants'
 
 export default function People() {
@@ -11,12 +12,20 @@ export default function People() {
   const [form, setForm] = useState({ name: '', email: '', team_group: 'Regular Team' })
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
+  const [whitelistedEmails, setWhitelistedEmails] = useState(new Set())
 
   useEffect(() => { loadPeople() }, [])
 
   const loadPeople = async () => {
+    if (isDemo) {
+      setPeople(demoPeople)
+      setWhitelistedEmails(new Set(demoWhitelist.map(w => (w.email || '').toLowerCase())))
+      return
+    }
     const { data } = await supabase.from('people').select('*').order('name')
     setPeople(data || [])
+    const { data: wl } = await supabase.from('whitelist').select('email')
+    setWhitelistedEmails(new Set((wl || []).map(w => (w.email || '').toLowerCase())))
   }
 
   const openNew = () => {
@@ -72,6 +81,16 @@ export default function People() {
       return
     }
     loadPeople()
+  }
+
+  const addToWhitelist = async (p) => {
+    const email = (p.email || '').trim().toLowerCase()
+    if (!email) { setError('This person has no email to whitelist.'); return }
+    const { error } = await supabase.from('whitelist').insert({ email, note: `added from People (${p.name})` })
+    if (error) { setError(error.message); return }
+    loadPeople()
+    setSuccessMsg(`${email} added to the whitelist.`)
+    setTimeout(() => setSuccessMsg(''), 5000)
   }
 
   const normalize = (tg) => tg === 'General' ? 'Regular Team' : tg
@@ -154,6 +173,11 @@ export default function People() {
               </div>
               <div style={{ marginTop: 14, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                 <Badge bg={gc.bg} text={gc.text}>{displayTeam}</Badge>
+                {p.email && (
+                  whitelistedEmails.has(p.email.toLowerCase())
+                    ? <Badge bg="#ecfdf5" text="#065f46">In Whitelist</Badge>
+                    : <button onClick={() => addToWhitelist(p)} className="btn-secondary btn-sm" title="Let this person sign in">+ Whitelist</button>
+                )}
               </div>
             </div>
           )

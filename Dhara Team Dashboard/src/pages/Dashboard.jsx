@@ -1,15 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { supabase } from '../lib/supabase'
+import { isDemo, demoProjects } from '../lib/demoData'
+import { PHASE_CHART_COLORS, CUSTOM_COLORS, phaseChartColor } from '../lib/constants'
 
-const PHASE_COLORS = {
-  'Budget Application': '#3b82f6',
-  'BSR / ISR': '#8b5cf6',
-  'UAT': '#f59e0b',
-  'DEV': '#22c55e',
-  'Golive': '#14b8a6',
-  'Unknown': '#94a3b8',
-}
 const FUNDING_COLORS = {
   'R&D': '#3b82f6',
   'R&D AI': '#8b5cf6',
@@ -23,28 +17,24 @@ const BUDGET_STATUS_COLORS = {
   'Approved': '#10b981',
   'Unknown': '#cbd5e1',
 }
-const FALLBACK = ['#3b82f6', '#8b5cf6', '#f59e0b', '#22c55e', '#14b8a6', '#94a3b8', '#ec4899', '#f97316']
 
-// Assign each phase in the chart a UNIQUE color. Known phases keep their
-// defined color; custom phases get a color never used by any known phase in
-// this chart nor by another custom phase.
+// Known phases keep their defined color; custom phases get a deterministic
+// hash color that never collides with a preset or another custom phase.
 function buildPhaseFill(names) {
   const map = {}
-  const used = new Set(names.filter(n => PHASE_COLORS[n]).map(n => PHASE_COLORS[n]))
+  const used = new Set(Object.values(PHASE_CHART_COLORS))
   names.forEach((name) => {
-    if (PHASE_COLORS[name]) {
-      map[name] = PHASE_COLORS[name]
+    if (PHASE_CHART_COLORS[name]) {
+      map[name] = PHASE_CHART_COLORS[name]
       return
     }
-    const free = FALLBACK.find(c => !used.has(c))
-    if (free) {
-      map[name] = free
-      used.add(free)
-      return
+    let color = phaseChartColor(name)
+    if (used.has(color)) {
+      const free = CUSTOM_COLORS.find(c => !used.has(c))
+      color = free || `hsl(${((Object.keys(map).length + 1) * 137.508) % 360}, 70%, 55%)`
     }
-    const hue = (Object.keys(map).length * 137.508) % 360
-    map[name] = `hsl(${hue.toFixed(1)}, 70%, 55%)`
-    used.add(map[name])
+    map[name] = color
+    used.add(color)
   })
   return (name) => map[name]
 }
@@ -55,6 +45,10 @@ export default function Dashboard() {
   useEffect(() => { loadProjects() }, [])
 
   const loadProjects = async () => {
+    if (isDemo) {
+      setProjects(demoProjects)
+      return
+    }
     const { data } = await supabase.from('projects').select('*').order('created_at', { ascending: false })
     setProjects(data || [])
   }
@@ -209,7 +203,7 @@ function OverviewCard({ label, value, bg, accent, sub, icon }) {
 
 function DonutChart({ data, colors, formatMoney }) {
   const total = data.reduce((s, d) => s + d.value, 0)
-  const getColor = (name, i) => colors[name] || FALLBACK[i % FALLBACK.length]
+  const getColor = (name, i) => colors[name] || CUSTOM_COLORS[i % CUSTOM_COLORS.length]
   const RADIAN = Math.PI / 180
   const LABEL_BLOCK_H = 38
   const SIDE_PAD = 38

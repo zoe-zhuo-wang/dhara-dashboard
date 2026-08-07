@@ -16,6 +16,9 @@ const navItems = [
   { path: '/people', label: 'People', icon: (
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><circle cx="7" cy="7" r="2.5" stroke="currentColor" strokeWidth="1.5"/><circle cx="14" cy="7" r="2" stroke="currentColor" strokeWidth="1.5"/><path d="M2.5 16.5c0-2.5 2-4.5 4.5-4.5s4.5 2 4.5 4.5" stroke="currentColor" strokeWidth="1.5"/><path d="M12 12c1.66 0 3 1.34 3 3v1.5" stroke="currentColor" strokeWidth="1.5"/></svg>
   )},
+  { path: '/whitelist', label: 'Whitelist', icon: (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="3" y="3" width="14" height="14" rx="2.5" stroke="currentColor" strokeWidth="1.5"/><path d="M6.5 10l2.5 2.5 4.5-5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+  )},
   { path: '/bms', label: 'BMS', icon: (
     <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><rect x="2.5" y="3" width="15" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.5"/><path d="M7.5 17h5M10 14v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
   )},

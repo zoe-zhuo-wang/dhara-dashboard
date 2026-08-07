@@ -1,11 +1,17 @@
 ﻿import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
-import { PHASE_OPTIONS, BUDGET_STATUS_OPTIONS, VETRA_OPTIONS, OVERALL_STATUS_OPTIONS, FUNDING_OPTIONS, phaseColor, overallColor, fundingStyle, budgetStatusColor } from '../lib/constants'
+import { PHASE_OPTIONS, BUDGET_STATUS_OPTIONS, VETRA_OPTIONS, OVERALL_STATUS_OPTIONS, FUNDING_OPTIONS, BIZ_GROUP_OPTIONS, phaseColor, overallColor, fundingStyle, budgetStatusColor } from '../lib/constants'
 import { fetchPhaseOptions } from '../lib/phases'
+import { updatesToText, updatesToMarkup } from '../lib/keyUpdates'
+import KeyUpdatesTable from '../components/KeyUpdatesTable'
+import { isDemo, demoProjects, demoPeople, demoPhaseOptions } from '../lib/demoData'
 
 const ALL_COLUMNS = [
   { key: 'name', label: 'Project Name', default: true, width: 200 },
+  { key: 'biz_group', label: 'Biz Group', default: true, width: 120, options: BIZ_GROUP_OPTIONS },
+  { key: 'biz_focal', label: 'Biz Focal', default: true, width: 140 },
   { key: 'dt_focal_id', label: 'DT Focal', default: true, width: 200 },
+  { key: 'it_focal', label: 'IT Focal', default: true, width: 140 },
   { key: 'funding_type', label: 'Funding Type', default: true, width: 140, options: FUNDING_OPTIONS },
   { key: 'current_phase', label: 'Current Phase', default: true, width: 140, options: PHASE_OPTIONS },
   { key: 'overall_status', label: 'Overall Status', default: true, width: 140, options: OVERALL_STATUS_OPTIONS },
@@ -14,11 +20,10 @@ const ALL_COLUMNS = [
   { key: 'description', label: 'Description', default: false, width: 280 },
   { key: 'start_date', label: 'Start Date', default: false, width: 120 },
   { key: 'end_date', label: 'End Date', default: false, width: 120 },
-  { key: 'key_updates', label: 'Key Updates', default: false, width: 280 },
-  { key: 'biz_case', label: 'Biz Case', default: false, width: 280 },
+  { key: 'key_updates', label: 'Key Updates', default: true, width: 320 },
+  { key: 'biz_benefit', label: 'Biz Benefit', default: false, width: 280 },
   { key: 'vetra_adopted', label: 'Vetra Adopted', default: false, width: 120, options: VETRA_OPTIONS },
 ]
-
 const DEFAULT_VISIBLE = ALL_COLUMNS.filter(c => c.default).map(c => c.key)
 
 export default function Projects() {
@@ -37,11 +42,11 @@ export default function Projects() {
   const [successMsg, setSuccessMsg] = useState('')
   const [phaseOptions, setPhaseOptions] = useState(PHASE_OPTIONS)
   const [customPhase, setCustomPhase] = useState('')
+  const [customBiz, setCustomBiz] = useState('')
   const firstErrorRef = useRef(null)
   const colPickerRef = useRef(null)
-  const emptyForm = { name: '', description: '', current_phase: '', key_updates: '', budget_status: '', biz_case: '', vetra_adopted: '', overall_status: '', budget: '', start_date: '', end_date: '', dt_focal_id: '', funding_type: '' }
+  const emptyForm = { name: '', description: '', current_phase: '', progress: '', next_steps: '', blockers: '', eta: '', owner: '', budget_status: '', biz_benefit: '', vetra_adopted: '', overall_status: '', budget: '', start_date: '', end_date: '', dt_focal_id: '', funding_type: '', biz_group: '', biz_focal: '', it_focal: '' }
   const [form, setForm] = useState(emptyForm)
-
   useEffect(() => { loadAll() }, [])
 
   useEffect(() => {
@@ -56,6 +61,12 @@ export default function Projects() {
   }, [showColPicker])
 
   const loadAll = async () => {
+    if (isDemo) {
+      setProjects(demoProjects)
+      setPeople(demoPeople)
+      setPhaseOptions(demoPhaseOptions())
+      return
+    }
     const [projRes, peopleRes, phaseOpts] = await Promise.all([
       supabase.from('projects').select('*').order('created_at', { ascending: false }),
       supabase.from('people').select('id, name, email').order('name'),
@@ -70,6 +81,7 @@ export default function Projects() {
     setEditing(null)
     setForm({ ...emptyForm, funding_type: '' })
     setCustomPhase('')
+    setCustomBiz('')
     setShowErrors(false)
     setError('')
     setShowModal(true)
@@ -78,13 +90,17 @@ export default function Projects() {
   const openEdit = (p) => {
     setEditing(p)
     setCustomPhase('')
+    setCustomBiz('')
     setForm({
       name: p.name, description: p.description || '',
-      current_phase: p.current_phase || '', key_updates: p.key_updates || '',
-      budget_status: p.budget_status || '', biz_case: p.biz_case || '',
+      current_phase: p.current_phase || '', progress: p.progress || '',
+      next_steps: p.next_steps || '', blockers: p.blockers || '',
+      eta: p.eta || '', owner: p.owner || '',
+      budget_status: p.budget_status || '', biz_benefit: p.biz_benefit || '',
       vetra_adopted: p.vetra_adopted || '', overall_status: p.overall_status || '',
       budget: p.budget || '', start_date: p.start_date || '', end_date: p.end_date || '',
-      dt_focal_id: p.dt_focal_id || '', funding_type: p.funding_type || ''
+      dt_focal_id: p.dt_focal_id || '', funding_type: p.funding_type || '',
+      biz_group: p.biz_group || '', biz_focal: p.biz_focal || '', it_focal: p.it_focal || ''
     })
     setShowErrors(false)
     setError('')
@@ -93,16 +109,18 @@ export default function Projects() {
 
   const requiredFields = [
     { key: 'name', label: 'Project Name' },
+    { key: 'biz_group', label: 'Biz Group' },
     { key: 'dt_focal_id', label: 'DT Focal' },
+    { key: 'biz_focal', label: 'Biz Focal' },
+    { key: 'it_focal', label: 'IT Focal' },
     { key: 'start_date', label: 'Start Date' },
     { key: 'end_date', label: 'End Date' },
     { key: 'description', label: 'Description' },
-    { key: 'biz_case', label: 'Biz Case' },
+    { key: 'biz_benefit', label: 'Biz Benefit' },
     { key: 'funding_type', label: 'Funding Type' },
     { key: 'budget', label: 'Budget' },
     { key: 'budget_status', label: 'Budget Status' },
     { key: 'vetra_adopted', label: 'Vetra Adopted' },
-    { key: 'key_updates', label: 'Key Updates' },
     { key: 'current_phase', label: 'Current Phase' },
     { key: 'overall_status', label: 'Overall Status' },
   ]
@@ -116,7 +134,12 @@ export default function Projects() {
     setError('')
     const isEditing = !!editing
     const phaseValue = form.current_phase === '__custom__' ? customPhase.trim() : form.current_phase
-    const missing = requiredFields.filter(f => f.key === 'current_phase' ? !phaseValue : isFieldEmpty(f.key))
+    const bizValue = form.biz_group === '__custom__' ? customBiz.trim() : form.biz_group
+    const missing = requiredFields.filter(f => {
+      if (f.key === 'current_phase') return !phaseValue
+      if (f.key === 'biz_group') return bizValue === undefined || bizValue === null || String(bizValue).trim() === ''
+      return isFieldEmpty(f.key)
+    })
     if (missing.length > 0) {
       setShowErrors(true)
       const errMsg = isEditing ? 'Please fill in all required fields before updating the project.' : 'Please fill in all required fields before creating the project.'
@@ -129,14 +152,27 @@ export default function Projects() {
       }, 100)
       return
     }
+    if (!stripHtml(form.progress).trim()) {
+      const errMsg = 'Progress is required.'
+      setError(errMsg)
+      alert(errMsg)
+      return
+    }
     const payload = {
       name: form.name, description: form.description,
-      current_phase: phaseValue, key_updates: form.key_updates,
-      budget_status: form.budget_status, biz_case: form.biz_case,
+      current_phase: phaseValue,
+      progress: form.progress?.trim() || null,
+      next_steps: form.next_steps?.trim() || null,
+      blockers: form.blockers?.trim() || null,
+      eta: form.eta || null,
+      owner: form.owner?.trim() || null,
+      updates_updated_at: new Date().toISOString(),
+      budget_status: form.budget_status, biz_benefit: form.biz_benefit,
       vetra_adopted: form.vetra_adopted, overall_status: form.overall_status,
       budget: parseFloat(form.budget) || 0, start_date: form.start_date || null,
       end_date: form.end_date || null, dt_focal_id: form.dt_focal_id || null,
-      funding_type: form.funding_type
+      funding_type: form.funding_type,
+      biz_group: bizValue || null, biz_focal: form.biz_focal?.trim() || null, it_focal: form.it_focal?.trim() || null
     }
     try {
       let result
@@ -241,10 +277,13 @@ export default function Projects() {
         return p.start_date || '-'
       case 'end_date':
         return p.end_date || '-'
-      case 'key_updates':
-        return <div style={cellTextStyle}>{stripHtml(p.key_updates) || '-'}</div>
-      case 'biz_case':
-        return <div style={cellTextStyle}>{p.biz_case || '-'}</div>
+      case 'key_updates': {
+        const html = updatesToMarkup(p)
+        if (!html) return '-'
+        return <div style={cellTextStyle} dangerouslySetInnerHTML={{ __html: html }} />
+      }
+      case 'biz_benefit':
+        return <div style={cellTextStyle}>{p.biz_benefit || '-'}</div>
       case 'vetra_adopted':
         return p.vetra_adopted || '-'
       default:
@@ -254,6 +293,13 @@ export default function Projects() {
 
   const getFilterValues = (col) => {
     if (col.key === 'current_phase') return phaseOptions
+    if (col.key === 'biz_group') {
+      const saved = [...new Set((projects || []).map(p => p.biz_group).filter(Boolean))]
+      return [...new Set([...BIZ_GROUP_OPTIONS, ...saved])]
+    }
+    if (col.key === 'biz_focal' || col.key === 'it_focal') {
+      return [...new Set((projects || []).map(p => p[col.key]).filter(Boolean))]
+    }
     if (col.options) return col.options
     if (col.key === 'dt_focal_id') return people.map(p => p.name).sort()
     return null
@@ -263,7 +309,11 @@ export default function Projects() {
     const XLSX = await import('xlsx')
     const rows = filtered.map(p => {
       const row = {}
-      ALL_COLUMNS.forEach(c => { row[c.label] = c.key === 'dt_focal_id' ? getPersonNames(p[c.key]) : p[c.key] ?? '' })
+      ALL_COLUMNS.forEach(c => {
+        if (c.key === 'dt_focal_id') { row[c.label] = getPersonNames(p[c.key]); return }
+        if (c.key === 'key_updates') { row[c.label] = updatesToText(p); return }
+        row[c.label] = p[c.key] ?? ''
+      })
       return row
     })
     const ws = XLSX.utils.json_to_sheet(rows)
@@ -389,7 +439,7 @@ export default function Projects() {
 
       {showModal && (
         <div style={modalOverlay} onClick={() => setShowModal(false)}>
-          <div className="card" style={{ width: '100%', maxWidth: 540, maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={e => e.stopPropagation()}>
+          <div className="card" style={{ width: '100%', maxWidth: 960, maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={e => e.stopPropagation()}>
             <h3 style={{ fontSize: 18, fontWeight: 700, padding: '24px 32px 16px', margin: 0, borderBottom: '1px solid var(--border)', flexShrink: 0 }}>{editing ? 'Edit Project' : 'New Project'}</h3>
             {error && (
               <div style={{ margin: '0 32px', marginTop: 16, padding: '10px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 13, flexShrink: 0 }}>
@@ -407,13 +457,18 @@ export default function Projects() {
                   const errIfEmpty = (key) => showErrors && isFieldEmpty(key)
                   return <>
                     <Field label="Project Name *" error={errIfEmpty('name')}><div ref={refIfFirst('name')}><input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} style={{ width: '100%' }} placeholder="Enter project name" /></div></Field>
+                    <Field label="Biz Group *" error={errIfEmpty('biz_group')}><div ref={refIfFirst('biz_group')} style={{ display: 'grid', gap: 6 }}><select value={form.biz_group} onChange={e => setForm({ ...form, biz_group: e.target.value })} style={{ width: '100%' }}><option value="">-- Select Biz Group --</option>{BIZ_GROUP_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}<option value="__custom__">＋ Custom Biz Group…</option></select>{form.biz_group === '__custom__' && <input value={customBiz} onChange={e => setCustomBiz(e.target.value)} style={{ width: '100%' }} placeholder="Enter a custom biz group..." />}</div></Field>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                      <Field label="Biz Focal *" error={errIfEmpty('biz_focal')}><div ref={refIfFirst('biz_focal')}><input value={form.biz_focal} onChange={e => setForm({ ...form, biz_focal: e.target.value })} style={{ width: '100%' }} placeholder="Biz focal name" /></div></Field>
+                      <Field label="IT Focal *" error={errIfEmpty('it_focal')}><div ref={refIfFirst('it_focal')}><input value={form.it_focal} onChange={e => setForm({ ...form, it_focal: e.target.value })} style={{ width: '100%' }} placeholder="IT focal name" /></div></Field>
+                    </div>
                     <Field label="DT Focal *" error={errIfEmpty('dt_focal_id')}><div><div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}><span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Select one or more:</span><button type="button" onClick={() => setShowAddPerson(true)} style={{ padding: '3px 10px', borderRadius: 6, background: 'var(--primary)', color: 'white', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>+ Add Person</button></div><div ref={refIfFirst('dt_focal_id')} style={{ display: 'flex', flexWrap: 'wrap', gap: 6, maxHeight: 140, overflowY: 'auto', padding: '4px 0' }}>{people.map(p => { const sel = (form.dt_focal_id || '').split(',').includes(p.id); return <label key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px', borderRadius: 6, fontSize: 12, cursor: 'pointer', background: sel ? '#dbeafe' : '#f1f5f9', border: sel ? '1px solid #93c5fd' : '1px solid transparent', color: sel ? '#1e40af' : 'var(--text)', userSelect: 'none' }}><input type="checkbox" checked={sel} onChange={() => toggleFocal(p.id)} style={{ width: 14, height: 14, accentColor: 'var(--primary)', margin: 0 }} />{p.name}</label> })}</div></div></Field>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                      <Field label="Start Date *" error={errIfEmpty('start_date')}><div ref={refIfFirst('start_date')}><input type="date" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} style={{ width: '100%' }} /></div></Field>
-                      <Field label="End Date *" error={errIfEmpty('end_date')}><div ref={refIfFirst('end_date')}><input type="date" value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} style={{ width: '100%' }} /></div></Field>
+                      <Field label="Start Date *" error={errIfEmpty('start_date')}><div ref={refIfFirst('start_date')}><input type="date" lang="en" value={form.start_date} onChange={e => setForm({ ...form, start_date: e.target.value })} style={{ width: '100%' }} /></div></Field>
+                      <Field label="End Date *" error={errIfEmpty('end_date')}><div ref={refIfFirst('end_date')}><input type="date" lang="en" value={form.end_date} onChange={e => setForm({ ...form, end_date: e.target.value })} style={{ width: '100%' }} /></div></Field>
                     </div>
                     <Field label="Description *" error={errIfEmpty('description')}><div ref={refIfFirst('description')}><textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} rows={3} style={{ width: '100%', height: 80, resize: 'none' }} placeholder="Brief description" /></div></Field>
-                    <Field label="Biz Case *" error={errIfEmpty('biz_case')}><div ref={refIfFirst('biz_case')}><textarea value={form.biz_case} onChange={e => setForm({ ...form, biz_case: e.target.value })} rows={3} style={{ width: '100%', height: 80, resize: 'none' }} placeholder="Reference or description" /></div></Field>
+                    <Field label="Biz Benefit *" error={errIfEmpty('biz_benefit')}><div ref={refIfFirst('biz_benefit')}><textarea value={form.biz_benefit} onChange={e => setForm({ ...form, biz_benefit: e.target.value })} rows={3} style={{ width: '100%', height: 80, resize: 'none' }} placeholder="Expected business benefits — e.g. cost savings, reduced lead time, improved CSAT, man-hour savings" /></div></Field>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
                       <Field label="Funding Type *" error={errIfEmpty('funding_type')}><div ref={refIfFirst('funding_type')}><select value={form.funding_type} onChange={e => setForm({ ...form, funding_type: e.target.value })} style={{ width: '100%' }}><option value="">-- Select Funding Type --</option>{FUNDING_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}</select></div></Field>
                       <Field label="Budget ($) *" error={errIfEmpty('budget')}><div ref={refIfFirst('budget')}><input type="number" value={form.budget} onChange={e => setForm({ ...form, budget: e.target.value })} style={{ width: '100%' }} placeholder="0" /></div></Field>
@@ -422,13 +477,36 @@ export default function Projects() {
                       <Field label="Budget Status *" error={errIfEmpty('budget_status')}><div ref={refIfFirst('budget_status')}><select value={form.budget_status} onChange={e => setForm({ ...form, budget_status: e.target.value })} style={{ width: '100%' }}><option value="">-- Select --</option>{BUDGET_STATUS_OPTIONS.map(b => <option key={b} value={b}>{b}</option>)}</select></div></Field>
                       <Field label="Vetra Adopted *" error={errIfEmpty('vetra_adopted')}><div ref={refIfFirst('vetra_adopted')}><select value={form.vetra_adopted} onChange={e => setForm({ ...form, vetra_adopted: e.target.value })} style={{ width: '100%' }}><option value="">-- Select --</option>{VETRA_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}</select></div></Field>
                     </div>
-                    <Field label="Key Updates *" error={errIfEmpty('key_updates')}><div ref={refIfFirst('key_updates')}><textarea value={form.key_updates} onChange={e => setForm({ ...form, key_updates: e.target.value })} rows={3} style={{ width: '100%', height: 80, resize: 'none' }} placeholder="Latest updates" /></div></Field>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>Key Updates</div>
+                      <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                          <thead>
+                            <tr>
+                              <th style={thStyle}>#</th>
+                              <th style={{ ...thStyle, width: '30%' }}>Progress</th>
+                              <th style={{ ...thStyle, width: '25%' }}>Next Steps</th>
+                              <th style={{ ...thStyle, width: '25%' }}>Blockers / Risks</th>
+                              <th style={thStyle}>ETA</th>
+                              <th style={thStyle}>Owner</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td style={{ ...tdStyle, width: 30, textAlign: 'center' }}>1</td>
+                              <td style={tdStyle}><textarea value={form.progress} onChange={e => setForm({ ...form, progress: e.target.value })} rows={6} style={{ width: '100%', minHeight: 150, resize: 'vertical' }} placeholder="What's been done since the last meeting" /></td>
+                              <td style={tdStyle}><textarea value={form.next_steps} onChange={e => setForm({ ...form, next_steps: e.target.value })} rows={6} style={{ width: '100%', minHeight: 150, resize: 'vertical' }} placeholder="What's planned before the next meeting" /></td>
+                              <td style={tdStyle}><textarea value={form.blockers} onChange={e => setForm({ ...form, blockers: e.target.value })} rows={6} style={{ width: '100%', minHeight: 150, resize: 'vertical' }} placeholder="Anything blocking progress, or who needs help" /></td>
+                              <td style={tdStyle}><input type="date" lang="en" value={form.eta} onChange={e => setForm({ ...form, eta: e.target.value })} style={{ width: '100%' }} /></td>
+                              <td style={tdStyle}><input value={form.owner} onChange={e => setForm({ ...form, owner: e.target.value })} style={{ width: '100%' }} placeholder="Who reported this update" /></td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 8 }}>Progress is required; Next Steps / Blockers / ETA / Owner are optional.</div>
+                    </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-                      <Field label="Current Phase *" error={errIfEmpty('current_phase')}><div ref={refIfFirst('current_phase')}>{form.current_phase === '__custom__' ? (
-                        <input value={customPhase} onChange={e => setCustomPhase(e.target.value)} style={{ width: '100%' }} placeholder="Enter a new phase..." />
-                      ) : (
-                        <select value={form.current_phase} onChange={e => setForm({ ...form, current_phase: e.target.value })} style={{ width: '100%' }}><option value="">-- Select Phase --</option>{phaseOptions.map(p => <option key={p} value={p}>{p}</option>)}<option value="__custom__">＋ Custom Phase…</option></select>
-                      )}</div></Field>
+                      <Field label="Current Phase *" error={errIfEmpty('current_phase')}><div ref={refIfFirst('current_phase')} style={{ display: 'grid', gap: 6 }}><select value={form.current_phase} onChange={e => setForm({ ...form, current_phase: e.target.value })} style={{ width: '100%' }}><option value="">-- Select Phase --</option>{phaseOptions.map(p => <option key={p} value={p}>{p}</option>)}<option value="__custom__">＋ Custom Phase…</option></select>{form.current_phase === '__custom__' && <input value={customPhase} onChange={e => setCustomPhase(e.target.value)} style={{ width: '100%' }} placeholder="Enter a custom phase..." />}</div></Field>
                       <Field label="Overall Status *" error={errIfEmpty('overall_status')}><div ref={refIfFirst('overall_status')}><select value={form.overall_status} onChange={e => setForm({ ...form, overall_status: e.target.value })} style={{ width: '100%' }}><option value="">-- Select Status --</option>{OVERALL_STATUS_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}</select></div></Field>
                     </div>
                   </>
@@ -528,16 +606,13 @@ function AddPersonModal({ onClose, onAdded }) {
 function ProjectViewModal({ project, people, onClose }) {
   const getPersonNames = (ids) => (ids || '').split(',').filter(Boolean).map(id => people.find(p => p.id === id)?.name).filter(Boolean).join(', ') || '-'
   const formatMoney = (n) => '$' + (n || 0).toLocaleString()
-  const stripHtml = (html) => {
-    if (!html) return ''
-    const div = document.createElement('div')
-    div.innerHTML = html
-    return div.textContent || div.innerText || ''
-  }
 
   const fieldMap = {
     name: { label: 'Project Name', value: project.name },
+    biz_group: { label: 'Biz Group', value: project.biz_group || '-' },
     dt_focal_id: { label: 'DT Focal', value: getPersonNames(project.dt_focal_id) },
+    biz_focal: { label: 'Biz Focal', value: project.biz_focal || '-' },
+    it_focal: { label: 'IT Focal', value: project.it_focal || '-' },
     funding_type: { label: 'Funding Type', value: project.funding_type || '-' },
     current_phase: { label: 'Current Phase', value: project.current_phase || '-' },
     overall_status: { label: 'Overall Status', value: project.overall_status || '-' },
@@ -546,14 +621,14 @@ function ProjectViewModal({ project, people, onClose }) {
     description: { label: 'Description', value: project.description || '-', long: true },
     start_date: { label: 'Start Date', value: project.start_date || '-' },
     end_date: { label: 'End Date', value: project.end_date || '-' },
-    key_updates: { label: 'Key Updates', value: stripHtml(project.key_updates) || '-', long: true },
-    biz_case: { label: 'Biz Case', value: project.biz_case || '-', long: true },
+    key_updates: { label: 'Key Updates' },
+    biz_benefit: { label: 'Biz Benefit', value: project.biz_benefit || '-', long: true },
     vetra_adopted: { label: 'Vetra Adopted', value: project.vetra_adopted || '-' },
   }
 
   return (
     <div style={modalOverlay} onClick={onClose}>
-      <div className="card" style={{ width: '100%', maxWidth: 600, maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={e => e.stopPropagation()}>
+      <div className="card" style={{ width: '100%', maxWidth: 1100, maxHeight: '85vh', display: 'flex', flexDirection: 'column', padding: 0 }} onClick={e => e.stopPropagation()}>
         <div style={{ padding: '20px 28px', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
           <h3 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>{project.name}</h3>
           <button onClick={onClose} style={{ background: 'none', color: 'var(--text-secondary)', padding: 4 }}>
@@ -563,6 +638,16 @@ function ProjectViewModal({ project, people, onClose }) {
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 28px' }}>
           <div style={{ display: 'grid', gap: 0 }}>
             {ALL_COLUMNS.map(col => {
+              if (col.key === 'key_updates') {
+                return (
+                  <div key={col.key} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Key Updates</div>
+                    <div style={{ border: '1px solid var(--border)', borderRadius: 10, overflowX: 'auto' }}>
+                      <KeyUpdatesTable project={project} boldOnly />
+                    </div>
+                  </div>
+                )
+              }
               const field = fieldMap[col.key]
               if (!field) return null
               return (

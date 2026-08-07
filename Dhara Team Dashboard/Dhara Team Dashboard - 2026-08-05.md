@@ -151,11 +151,28 @@ npm run dev
 - Frontend checks via `supabase.from('people').ilike('email', ...)` before insert (People page + Quick Add modal)
 - DB-level `people_email_unique` UNIQUE constraint applied + verified (2026-08-05)
 
-### Invite via Edge Function (restored 2026-08-05)
+### Invite via Edge Function (restored 2026-08-05, v9)
 - Creating auth accounts needs the **service_role key**, which must never ship in the browser → done in a Supabase Edge Function `invite-user`
-- Frontend (`InviteModal.jsx`, top-right button) POSTs email/name/team to the function with the caller's login JWT; the function verifies the caller (returns `401` if not signed in), then `auth.admin.generateLink({ type: 'invite' })` with the service role creates the account and returns an invite link
-- The inviter copies the invite link and shares it; the person sets their own password; first login triggers the existing Account ↔ People auto-merge
+- Frontend (`InviteModal.jsx`, top-right button) POSTs email/name/team to the function with the caller's login JWT; the function verifies the caller `decodeJwtRole == 'authenticated'` (returns `401` if not signed in)
+- The function then raw-`fetch`es GoTrue `POST /auth/v1/admin/invite?redirect_to=<app>/**#/**` with the service role key. This **both emails the person the invite** AND returns `properties.action_link` (supabase-js strips it, the raw call does not)
+- The modal shows "Invitation Sent" + a **backup copyable invite link** for the just-invited email (fallback if the email doesn't arrive). Person sets their own password → first login triggers the existing Account ↔ People auto-merge
 - No self-signup reopened — access stays **invite-only**; all signed-in members have the invite button (not just the owner)
+- `redirect_to` / `site_url` / `uri_allow_list` all point at `https://zoe-zhuo-wang.github.io/dhara-dashboard` (production) + localhost dev ports
+
+### Edge Function Deploy (no CLI → Management API)
+- Deploy: `curl -X POST "https://api.supabase.com/v1/projects/nqygyktioiwabvyfziev/functions/deploy?slug=invite-user" -H "Authorization: Bearer sbp_..." -H "x-supabase-api-version: 2024-06-27" -F "file=@supabase/functions/invite-user/index.ts;type=text/plain" -F "metadata=@metadata.json;type=application/json"`
+- `metadata.json` must be written UTF-8 **without BOM** via `[System.IO.File]::WriteAllText(...)`; content `{"entrypoint_path":"index.ts","verify_jwt":true,"name":"invite-user"}`
+
+### Supabase platform outage (2026-08-05, ongoing at time of writing)
+- Status: `Auth` 99.99% normal, but **Database** = `degraded_performance` (incident "Project Upgrade Delays", identified/fixing)
+- Symptom: GoTrue **write paths all fail 503** (`/admin/invite`, `/admin/generate_link`, `/signup`), reads still 401/OK → invite + login-for-new-password broken until DB recovers
+- Workaround verified: Management API `POST /v1/projects/<ref>/database/query` runs SQL against the DB directly (bypasses GoTrue) → used to inspect/add `people` rows
+
+### Yue Su account (466ecb06-43ed-45d9-86db-91f08cfb8a11) — added to People 2026-08-05
+- Already had a **complete auth account**: email `suyue2@lenovo.com` confirmed, `encrypted_password` present, last sign-in 2026-08-05 08:54. BUT the invite was completed via an old **localhost** link that never opened → she has never actually set/login her own password
+- I inserted her into `people` (name `Yue Su`, `Regular Team`, `user_id` linked) — she's in the roster
+- **To get her in**: she only needs a working password. Since she already has an auth account, the clean path = wait for GoTrue, she clicks **Forgot password** → email links to `suyue2@lenovo.com` → she sets a new password. (No new invite needed — forgot-password is the right tool for an existing account.)
+- Fallback if GoTrue stays down: I can SQL-set a temporary bcrypt password for her now
 
 ---
 

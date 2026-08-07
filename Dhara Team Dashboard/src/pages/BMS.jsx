@@ -1,8 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { PHASE_OPTIONS, OVERALL_STATUS_OPTIONS, phaseColor, overallColor } from '../lib/constants'
-import { sanitizeHtml } from '../lib/sanitize'
 import { fetchPhaseOptions } from '../lib/phases'
+import { updatesRows } from '../lib/keyUpdates'
+import RichEditor from '../components/RichEditor'
+import KeyUpdatesTable from '../components/KeyUpdatesTable'
+import { isDemo, demoProjects, demoPeople, demoPhaseOptions } from '../lib/demoData'
 
 function Badge({ bg, text, children }) {
   return (
@@ -29,6 +32,13 @@ export default function BMS() {
 
   const loadAll = async () => {
     setLoading(true)
+    if (isDemo) {
+      setProjects(demoProjects)
+      setPeople(demoPeople)
+      setPhaseOptions(demoPhaseOptions())
+      setLoading(false)
+      return
+    }
     const [projRes, peopleRes, phaseOpts] = await Promise.all([
       supabase.from('projects').select('*').order('created_at', { ascending: false }),
       supabase.from('people').select('id, name'),
@@ -106,42 +116,21 @@ function BMSCard({ project, focalName, index, onSaved, onShowSuccess, phaseOptio
   const [customPhase, setCustomPhase] = useState('')
   const [overallDraft, setOverallDraft] = useState(project.overall_status || '')
   const [saving, setSaving] = useState(false)
-  const editorRef = useRef(null)
-  const [showFontColor, setShowFontColor] = useState(false)
-  const [showHighlight, setShowHighlight] = useState(false)
-  const fontColorRef = useRef(null)
-  const highlightRef = useRef(null)
-
-  useEffect(() => {
-    if (!showFontColor && !showHighlight) return
-    const handleClick = (e) => {
-      if (fontColorRef.current && !fontColorRef.current.contains(e.target)) setShowFontColor(false)
-      if (highlightRef.current && !highlightRef.current.contains(e.target)) setShowHighlight(false)
-    }
-    document.addEventListener('mousedown', handleClick)
-    return () => document.removeEventListener('mousedown', handleClick)
-  }, [showFontColor, showHighlight])
+  const [savingError, setSavingError] = useState('')
+  const [updDraft, setUpdDraft] = useState({ progress: '', next_steps: '', blockers: '', eta: '', owner: '' })
 
   useEffect(() => { setPhaseDraft(project.current_phase || '') }, [project.current_phase])
   useEffect(() => { setOverallDraft(project.overall_status || '') }, [project.overall_status])
 
-  useEffect(() => {
-    if (editingField === 'key' && editorRef.current) {
-      editorRef.current.innerHTML = project.key_updates || ''
-      editorRef.current.focus()
-    }
-  }, [editingField, project.key_updates])
-
-  const execCmd = (cmd, val) => {
-    document.execCommand(cmd, false, val)
-  }
-
-  const applyColor = (prop, color) => {
-    const cmd = prop === 'color' ? 'foreColor' : 'hiliteColor'
-    document.execCommand(cmd, false, color)
-  }
-
   const saveField = async (field, value) => {
+    if (isDemo) {
+      const idx = demoProjects.findIndex(p => p.id === project.id)
+      if (idx >= 0) demoProjects[idx] = { ...demoProjects[idx], [field]: value }
+      onShowSuccess('Saved! Changes synced to Projects page')
+      setEditingField(null)
+      await onSaved()
+      return
+    }
     setSaving(true)
     const { error } = await supabase.from('projects').update({ [field]: value }).eq('id', project.id)
     setSaving(false)
@@ -152,9 +141,83 @@ function BMSCard({ project, focalName, index, onSaved, onShowSuccess, phaseOptio
     setEditingField(null)
   }
 
-  const saveKeyUpdates = () => {
-    const html = editorRef.current?.innerHTML || ''
-    saveField('key_updates', html)
+  const startEditUpdates = () => {
+    setUpdDraft({
+      progress: project.progress || '',
+      next_steps: project.next_steps || '',
+      blockers: project.blockers || '',
+      eta: project.eta || '',
+      owner: project.owner || '',
+    })
+    setSavingError('')
+    setEditingField('key')
+  }
+
+  const strip = (html) => (html || '').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').trim()
+
+  const saveUpdates = async () => {
+    const progress = (updDraft.progress || '').trim()
+    const next_steps = (updDraft.next_steps || '').trim()
+    const blockers = (updDraft.blockers || '').trim()
+    const eta = (updDraft.eta || '').trim()
+    const owner = (updDraft.owner || '').trim()
+    if (!strip(progress)) {
+      setSavingError('Progress is required.')
+      return
+    }
+    setSaving(true)
+    if (isDemo) {
+      const idx = demoProjects.findIndex(p => p.id === project.id)
+      if (idx >= 0) {
+        const prev = { ...demoProjects[idx] }
+        demoProjects[idx] = {
+          ...prev,
+          progress: progress || null,
+          next_steps: next_steps || null,
+          blockers: blockers || null,
+          eta: eta || null,
+          owner: owner || null,
+          last_update: {
+            progress: prev.progress || null,
+            next_steps: prev.next_steps || null,
+            blockers: prev.blockers || null,
+            eta: prev.eta || null,
+            owner: prev.owner || null,
+            updated_at: prev.updates_updated_at || null,
+          },
+          updates_updated_at: new Date().toISOString(),
+        }
+      }
+      setSaving(false)
+      onShowSuccess('Saved! Changes synced to Projects page')
+      setEditingField(null)
+      await onSaved()
+      return
+    }
+    const { error } = await supabase.from('projects').update({
+      progress: progress || null,
+      next_steps: next_steps || null,
+      blockers: blockers || null,
+      eta: eta || null,
+      owner: owner || null,
+      last_update: {
+        progress: project.progress || null,
+        next_steps: project.next_steps || null,
+        blockers: project.blockers || null,
+        eta: project.eta || null,
+        owner: project.owner || null,
+        updated_at: project.updates_updated_at || null,
+      },
+      updates_updated_at: new Date().toISOString(),
+    }).eq('id', project.id)
+    setSaving(false)
+    if (error) {
+      setSavingError(error.message || 'Failed to save updates')
+      return
+    }
+    onShowSuccess('Saved! Changes synced to Projects page')
+    setEditingField(null)
+    await onSaved()
   }
 
   const phase = project.current_phase
@@ -162,7 +225,7 @@ function BMSCard({ project, focalName, index, onSaved, onShowSuccess, phaseOptio
   const pc = phase ? phaseColor(phase) : null
   const oc = overall ? overallColor(overall) : null
 
-  const hasRichText = project.key_updates && /<[a-z][\s\S]*>/i.test(project.key_updates)
+  const updRows = updatesRows(project)
 
   return (
     <div style={{
@@ -207,6 +270,26 @@ function BMSCard({ project, focalName, index, onSaved, onShowSuccess, phaseOptio
             <span style={{ fontSize: 13, color: '#94a3b8' }}>DT Focal</span>
             <span style={{ fontSize: 14, fontWeight: 600, color: '#334155' }}>{focalName}</span>
           </div>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 14px', borderRadius: 10,
+            background: '#f8fafc', border: '1px solid #f1f5f9',
+            flexShrink: 0,
+          }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="3" y="3" width="10" height="10" rx="1.5" stroke="#64748b" strokeWidth="1.3"/></svg>
+            <span style={{ fontSize: 13, color: '#94a3b8' }}>Biz Focal</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#334155' }}>{project.biz_focal || '—'}</span>
+          </div>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '8px 14px', borderRadius: 10,
+            background: '#f8fafc', border: '1px solid #f1f5f9',
+            flexShrink: 0,
+          }}>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5" stroke="#64748b" strokeWidth="1.3"/></svg>
+            <span style={{ fontSize: 13, color: '#94a3b8' }}>IT Focal</span>
+            <span style={{ fontSize: 14, fontWeight: 600, color: '#334155' }}>{project.it_focal || '—'}</span>
+          </div>
         </div>
 
         {/* Badges row: Current Phase + Overall Status (editable) */}
@@ -214,15 +297,7 @@ function BMSCard({ project, focalName, index, onSaved, onShowSuccess, phaseOptio
           {editingField === 'phase' ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 13, fontWeight: 600, color: '#64748b' }}>Current Phase：</span>
-              {phaseDraft === '__custom__' ? (
-                <input
-                  value={customPhase}
-                  onChange={e => setCustomPhase(e.target.value)}
-                  autoFocus
-                  placeholder="Enter a new phase..."
-                  style={{ padding: '4px 8px', borderRadius: 6, border: '1.5px solid #93c5fd', fontSize: 14, background: '#fff', outline: 'none', width: 180 }}
-                />
-              ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <select
                   value={phaseDraft}
                   onChange={e => setPhaseDraft(e.target.value)}
@@ -233,7 +308,15 @@ function BMSCard({ project, focalName, index, onSaved, onShowSuccess, phaseOptio
                   {phaseOptions.map(o => <option key={o} value={o}>{o}</option>)}
                   <option value="__custom__">＋ Custom Phase…</option>
                 </select>
-              )}
+                {phaseDraft === '__custom__' && (
+                  <input
+                    value={customPhase}
+                    onChange={e => setCustomPhase(e.target.value)}
+                    placeholder="Enter a new phase..."
+                    style={{ padding: '4px 8px', borderRadius: 6, border: '1.5px solid #93c5fd', fontSize: 14, background: '#fff', outline: 'none', width: 180 }}
+                  />
+                )}
+              </div>
               <button onClick={() => {
                 const val = phaseDraft === '__custom__' ? customPhase.trim() : phaseDraft
                 if (!val) return
@@ -311,7 +394,7 @@ function BMSCard({ project, focalName, index, onSaved, onShowSuccess, phaseOptio
             </div>
             {editingField !== 'key' && (
               <button
-                onClick={() => setEditingField('key')}
+                onClick={startEditUpdates}
                 style={{ fontSize: 13, color: '#3b82f6', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600, padding: '4px 10px', borderRadius: 6 }}
                 onMouseEnter={e => e.target.style.background = '#eff6ff'}
                 onMouseLeave={e => e.target.style.background = 'none'}
@@ -322,124 +405,54 @@ function BMSCard({ project, focalName, index, onSaved, onShowSuccess, phaseOptio
           </div>
 
           {editingField === 'key' ? (
-            <div>
-              {/* Toolbar */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: 1, padding: '6px 10px',
-                borderBottom: '1px solid #f1f5f9', background: '#f8fafc', flexWrap: 'wrap',
-              }}>
-                <TBtn label="B" title="Bold" style={{ fontWeight: 800 }} onClick={() => execCmd('bold')} />
-                <TBtn label="I" title="Italic" style={{ fontStyle: 'italic' }} onClick={() => execCmd('italic')} />
-                <TBtn label="U" title="Underline" style={{ textDecoration: 'underline' }} onClick={() => execCmd('underline')} />
-                <Sep />
-                {/* Font Color */}
-                <div ref={fontColorRef} style={{ position: 'relative' }}>
-                  <button
-                    title="Font Color"
-                    onMouseDown={e => e.preventDefault()}
-                    onClick={() => { setShowFontColor(!showFontColor); setShowHighlight(false) }}
-                    style={{
-                      padding: '4px 6px', borderRadius: 4, border: 'none', background: 'transparent',
-                      cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-                      margin: 0, fontSize: 13, minWidth: 'auto', height: 'auto',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <span style={{ fontWeight: 800, fontSize: 14, color: '#333', lineHeight: 1 }}>A</span>
-                    <div style={{ width: 16, height: 3, borderRadius: 1, background: '#333' }} />
-                  </button>
-                  {showFontColor && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 100, display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4 }}>
-                      {['#000000','#c00000','#ffc000','#00b050','#0070c0','#7030a0'].map(c => (
-                        <div
-                          key={c}
-                          onMouseDown={e => e.preventDefault()}
-                          onClick={() => { applyColor('color', c); setShowFontColor(false) }}
-                          style={{ width: 22, height: 22, borderRadius: 3, background: c, border: '1px solid #d1d5db', cursor: 'pointer' }}
-                          title={c}
-                        />
-                      ))}
-                    </div>
-                  )}
+            <div style={{ padding: '16px 20px', display: 'grid', gap: 14 }}>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Progress <span style={{ color: '#ef4444' }}>*</span> <span style={{ fontWeight: 400, color: '#94a3b8', fontSize: 12 }}>— what's been done since the last meeting</span></div>
+                <RichEditor initialValue={updDraft.progress} onChange={html => setUpdDraft(d => ({ ...d, progress: html }))} minHeight={70} placeholder="What did the team complete since the last meeting?" />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Next Steps <span style={{ fontWeight: 400, color: '#94a3b8', fontSize: 12 }}>— what's planned before the next meeting</span></div>
+                <RichEditor initialValue={updDraft.next_steps} onChange={html => setUpdDraft(d => ({ ...d, next_steps: html }))} minHeight={60} placeholder="What happens next?" />
+              </div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Blockers / Risks</div>
+                <RichEditor initialValue={updDraft.blockers} onChange={html => setUpdDraft(d => ({ ...d, blockers: html }))} minHeight={60} placeholder="Anything blocking progress, or who needs help?" />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>ETA</div>
+                  <input type="date" lang="en" value={updDraft.eta} onChange={e => setUpdDraft(d => ({ ...d, eta: e.target.value }))} style={{ width: '100%', padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, outline: 'none', background: '#fff' }} />
                 </div>
-                {/* Highlight */}
-                <div ref={highlightRef} style={{ position: 'relative' }}>
-                  <button
-                    title="Highlight"
-                    onMouseDown={e => e.preventDefault()}
-                    onClick={() => { setShowHighlight(!showHighlight); setShowFontColor(false) }}
-                    style={{
-                      padding: '4px 6px', borderRadius: 4, border: 'none', background: 'transparent',
-                      cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1,
-                      margin: 0, fontSize: 13, minWidth: 'auto', height: 'auto',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <span style={{ fontWeight: 800, fontSize: 14, color: '#333', lineHeight: 1, background: '#ffff00', padding: '0 2px' }}>A</span>
-                    <div style={{ width: 16, height: 3, borderRadius: 1, background: '#ffff00' }} />
-                  </button>
-                  {showHighlight && (
-                    <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, padding: 8, boxShadow: '0 4px 16px rgba(0,0,0,0.12)', zIndex: 100, display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 4 }}>
-                      {['#ffff00','#92d050','#00b0f0','#ff66cc','#ff9933','#ffffff'].map(c => (
-                        <div
-                          key={c}
-                          onMouseDown={e => e.preventDefault()}
-                          onClick={() => { applyColor('backgroundColor', c); setShowHighlight(false) }}
-                          style={{ width: 22, height: 22, borderRadius: 3, background: c, border: '1px solid #d1d5db', cursor: 'pointer' }}
-                          title={c}
-                        />
-                      ))}
-                    </div>
-                  )}
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Owner</div>
+                  <input value={updDraft.owner} onChange={e => setUpdDraft(d => ({ ...d, owner: e.target.value }))} placeholder="Who reported this update" style={{ width: '100%', padding: '8px 12px', border: '1px solid #e2e8f0', borderRadius: 8, fontSize: 14, outline: 'none', background: '#fff' }} />
                 </div>
               </div>
-              {/* Editor */}
-              <div
-                ref={editorRef}
-                contentEditable
-                suppressContentEditableWarning
-                style={{
-                  minHeight: 80, maxHeight: 300, overflowY: 'auto',
-                  padding: '14px 16px', fontSize: 15, lineHeight: 1.8,
-                  outline: 'none', color: '#334155',
-                }}
-              />
-              {/* Actions */}
-              <div style={{ display: 'flex', gap: 10, padding: '10px 16px', borderTop: '1px solid #f1f5f9' }}>
-                <button
-                  onClick={saveKeyUpdates}
-                  disabled={saving}
-                  style={{
-                    padding: '8px 20px', borderRadius: 8,
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
-                    color: '#fff', fontSize: 13, fontWeight: 600,
-                    border: 'none', cursor: 'pointer', opacity: saving ? 0.6 : 1,
-                    boxShadow: '0 2px 6px rgba(59,130,246,0.3)',
-                  }}
-                >
+              {savingError && (
+                <div style={{ padding: '8px 12px', borderRadius: 6, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 12 }}>{savingError}</div>
+              )}
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={saveUpdates} disabled={saving} style={{
+                  padding: '8px 20px', borderRadius: 8,
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+                  color: '#fff', fontSize: 13, fontWeight: 600,
+                  border: 'none', cursor: 'pointer', opacity: saving ? 0.6 : 1,
+                  boxShadow: '0 2px 6px rgba(59,130,246,0.3)',
+                }}>
                   {saving ? 'Saving...' : 'Save'}
                 </button>
-                <button
-                  onClick={() => setEditingField(null)}
-                  style={{ padding: '8px 20px', borderRadius: 8, background: '#f1f5f9', color: '#475569', fontSize: 13, fontWeight: 600, border: '1px solid #e2e8f0', cursor: 'pointer' }}
-                >
+                <button onClick={() => setEditingField(null)} style={{ padding: '8px 20px', borderRadius: 8, background: '#f1f5f9', color: '#475569', fontSize: 13, fontWeight: 600, border: '1px solid #e2e8f0', cursor: 'pointer' }}>
                   Cancel
                 </button>
               </div>
             </div>
+          ) : updRows.length ? (
+            <div style={{ padding: '16px 20px' }}>
+              <KeyUpdatesTable project={project} />
+            </div>
           ) : (
             <div style={{ padding: '16px 20px', minHeight: 28 }}>
-              {project.key_updates ? (
-                hasRichText ? (
-                  <div style={{ fontSize: 15, color: '#334155', lineHeight: 1.8 }} dangerouslySetInnerHTML={{ __html: sanitizeHtml(project.key_updates) }} />
-                ) : (
-                  <div style={{ fontSize: 15, color: '#334155', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{project.key_updates}</div>
-                )
-              ) : (
-                <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: 15 }}>No updates yet</span>
-              )}
+              <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: 15 }}>No updates yet</span>
             </div>
           )}
         </div>
@@ -448,28 +461,3 @@ function BMSCard({ project, focalName, index, onSaved, onShowSuccess, phaseOptio
   )
 }
 
-function TBtn({ label, title, style, onClick }) {
-  return (
-    <button
-      title={title}
-      onMouseDown={e => e.preventDefault()}
-      onClick={onClick}
-      style={{
-        minWidth: 28, height: 28, borderRadius: 4, border: 'none',
-        background: 'transparent', color: '#334155', cursor: 'pointer',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 13, fontWeight: 600, fontFamily: 'inherit',
-        padding: '2px 6px', margin: 0,
-        transition: 'background 0.1s', ...style,
-      }}
-      onMouseEnter={e => e.currentTarget.style.background = '#e2e8f0'}
-      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-    >
-      {label}
-    </button>
-  )
-}
-
-function Sep() {
-  return <div style={{ width: 1, height: 18, background: '#e2e8f0', margin: '0 3px' }} />
-}

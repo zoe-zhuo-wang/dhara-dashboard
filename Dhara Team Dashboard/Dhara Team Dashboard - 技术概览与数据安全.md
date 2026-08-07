@@ -11,8 +11,8 @@
 | 部分 | 说明 |
 |------|------|
 | 网页 | React 前端，托管在 GitHub Pages（国内可访问） |
-| 数据 | Supabase 云数据库，6 张表（项目、成员、预算等） |
-| 登录 | 邮箱 + 密码，只有受邀成员能进系统 |
+| 数据 | Supabase 云数据库，多张表（项目、成员、白名单等） |
+| 登录 | 邮箱 + 密码；注册开放，但**只有白名单邮箱**能创建账号并登录 |
 
 ## 怎么保安全（三道门）
 
@@ -24,6 +24,16 @@
 
 - 所有登录成员：都能看 / 改数据
 - 只有 owner（Zoe）：能改代码和数据库结构
+- 白名单表只有登录成员可管理（增删/开关），决定谁能创建账号
+
+## 2026-08-05 Updates
+
+- 登录机制从**邀请制**改为**邮箱白名单制**：登录页新增 Create Account，`is_whitelisted` RPC 校验邮箱是否在白名单，白名单同时作登录门槛（不在名单则登出）
+- 新增 `whitelist` 表 + RLS + `is_whitelisted(email)` SECURITY DEFINER 函数，并补齐表授权（authenticated / service_role）
+- 新增 Whitelist 页面（/whitelist），People 卡片可一键 `+ Whitelist`
+- 增加 `?demo=1` 演示模式：跳过登录、匿名只读；配合临时匿名只读策略（`demo_readonly.sql`）演示真实数据，结束后用 `demo_readonly_revert.sql` 回收
+- 登录守卫改 **fail-open**：仅确认不在白名单才登出，查询报错放行（避免平台故障误登出）
+- 同步更新 User Guide 接入说明
 
 ## 2026-07-31 安全处理记录
 
@@ -38,7 +48,7 @@
 
 # Dhara Team Dashboard — Tech Overview & Data Security
 
-> Created: 2026-07-31 · Last updated: 2026-08-04
+> Created: 2026-07-31 · Last updated: 2026-08-05
 
 ## In one sentence
 
@@ -49,8 +59,8 @@ A team project dashboard that **requires login to use**. Data lives in a cloud d
 | Part | Description |
 |------|-------------|
 | Frontend | React app, hosted on GitHub Pages (accessible from mainland China) |
-| Data | Supabase cloud database — 6 tables (projects, people, budget, etc.) |
-| Login | Email + password, only invited members can enter |
+| Data | Supabase cloud database — multiple tables (projects, people, whitelist, etc.) |
+| Login | Email + password; sign-up is open, but **only whitelisted emails** can create an account and sign in |
 
 ## How security is kept (three gates)
 
@@ -62,6 +72,16 @@ A team project dashboard that **requires login to use**. Data lives in a cloud d
 
 - All signed-in members: can view / edit all data.
 - Only the owner (Zoe): can change code and database structure.
+- The whitelist table is managed by signed-in members (add/remove/toggle) and decides who can create an account.
+
+## 2026-08-05 Updates
+
+- Login switched from **invite-based** to **email-whitelist-based**: a Create Account tab was added to the login page, and the `is_whitelisted` RPC checks the email against the whitelist; the whitelist also acts as the sign-in gate (accounts not on it are signed out).
+- Added the `whitelist` table + RLS + `is_whitelisted(email)` SECURITY DEFINER function, and added table grants (`authenticated` / `service_role`).
+- Added a Whitelist page (`/whitelist`); People cards have a one-click `+ Whitelist` action.
+- Added `?demo=1` demo mode: skips login, anonymous read-only; paired with temporary anon read policies (`demo_readonly.sql`) to demo real data, reverted with `demo_readonly_revert.sql` afterward.
+- Login guard changed to **fail-open**: only signs out when confirmed not whitelisted, allows on query errors (avoids signing users out during platform outages).
+- User Guide updated to reflect the new sign-up flow.
 
 ## 2026-07-31 Security handling log
 

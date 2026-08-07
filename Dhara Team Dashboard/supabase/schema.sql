@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS project_members (
   UNIQUE(project_id, person_id)
 );
 
--- 5. Allocations table (Man-Day tracking)
+-- 6. Allocations table (Man-Day tracking)
 CREATE TABLE IF NOT EXISTS allocations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
@@ -68,6 +68,16 @@ CREATE TABLE IF NOT EXISTS allocations (
   UNIQUE(project_id, person_id, year, month)
 );
 
+-- 7. Whitelist table (email allow-list controlling who can log in / create an account)
+CREATE TABLE IF NOT EXISTS whitelist (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  email TEXT UNIQUE NOT NULL,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  note TEXT DEFAULT '',
+  created_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ============================================
 -- Row Level Security (RLS)
 -- ============================================
@@ -77,6 +87,7 @@ ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE people ENABLE ROW LEVEL SECURITY;
 ALTER TABLE project_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE allocations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE whitelist ENABLE ROW LEVEL SECURITY;
 
 -- Profiles: users can read all, update own
 CREATE POLICY "Profiles: anyone can read" ON profiles FOR SELECT USING (true);
@@ -107,6 +118,39 @@ CREATE POLICY "Allocations: authenticated can insert" ON allocations FOR INSERT 
 CREATE POLICY "Allocations: authenticated can update" ON allocations FOR UPDATE TO authenticated USING (true);
 CREATE POLICY "Allocations: authenticated can delete" ON allocations FOR DELETE TO authenticated USING (true);
 
+-- Whitelist: authenticated users can CRUD
+CREATE POLICY "Whitelist: authenticated can read" ON whitelist FOR SELECT TO authenticated USING (true);
+CREATE POLICY "Whitelist: authenticated can insert" ON whitelist FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "Whitelist: authenticated can update" ON whitelist FOR UPDATE TO authenticated USING (true);
+CREATE POLICY "Whitelist: authenticated can delete" ON whitelist FOR DELETE TO authenticated USING (true);
+
+-- ============================================
+-- Whitelist membership check (used before account creation / sign-in gate)
+-- ============================================
+
+CREATE OR REPLACE FUNCTION public.is_whitelisted(p_email TEXT)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.whitelist
+    WHERE active = TRUE AND email = LOWER(BTRIM(p_email))
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.is_whitelisted(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_whitelisted(TEXT) TO anon, authenticated;
+
+-- ============================================
+-- Table privileges (SQL-editor tables miss auto-grants)
+-- ============================================
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.whitelist TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.whitelist TO service_role;
+
 -- ============================================
 -- Trigger: auto-create profile on signup
 -- ============================================
@@ -136,3 +180,13 @@ CREATE TRIGGER on_auth_user_created
 -- dt_focal_id: 逗号分隔的 person UUID 字符串（v2026-07-30 改为 TEXT 支持多人）
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS dt_focal_id TEXT;
 ALTER TABLE projects ADD COLUMN IF NOT EXISTS funding_type TEXT CHECK (funding_type IN ('R&D', 'R&D AI', 'Vendor Onboarding', 'BAU'));
+
+-- ============================================
+-- v2026-08-06: Biz Group / Biz Focal / IT Focal
+-- ============================================
+
+-- biz_group: 下拉（IDG / ISG / SSG / 自定义），文本框存储字符串
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS biz_group TEXT;
+-- biz_focal / it_focal: 纯文本负责人字段
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS biz_focal TEXT;
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS it_focal TEXT;
