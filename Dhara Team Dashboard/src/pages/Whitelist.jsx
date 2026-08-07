@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 
+const thStyle = { padding: '10px 16px', fontSize: 12, fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: 0.3, whiteSpace: 'nowrap' }
+const tdStyle = { padding: '10px 16px', verticalAlign: 'middle' }
+
 export default function Whitelist() {
   const [entries, setEntries] = useState([])
   const [showModal, setShowModal] = useState(false)
@@ -106,30 +109,47 @@ export default function Whitelist() {
         <div style={{ marginBottom: 16, padding: '10px 14px', borderRadius: 8, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: 13 }}>{error}</div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 16 }}>
-        {filtered.map(w => (
-          <div key={w.id} className="card" style={{ position: 'relative', opacity: w.active ? 1 : 0.6 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 15, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{w.email}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{w.note || '—'}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 6 }}>Added {new Date(w.created_at).toLocaleDateString('en-US')}</div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
-                  <input type="checkbox" checked={w.active} onChange={() => toggleActive(w)} />
-                  {w.active ? 'Active' : 'Disabled'}
-                </label>
-                <button onClick={() => remove(w.id)} className="btn-danger btn-sm">Remove</button>
-              </div>
-            </div>
-          </div>
-        ))}
-        {filtered.length === 0 && (
-          <div style={{ gridColumn: '1/-1', textAlign: 'center', color: 'var(--text-secondary)', padding: 48 }}>
-            {entries.length === 0 ? 'No whitelist entries yet — add emails to let people sign in.' : 'No matches found'}
-          </div>
-        )}
+      <div className="card" style={{ padding: 0, overflow: 'auto' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+              <th style={thStyle}>Email</th>
+              <th style={thStyle}>Note</th>
+              <th style={{ ...thStyle, width: 110 }}>Status</th>
+              <th style={{ ...thStyle, width: 120 }}>Added</th>
+              <th style={{ ...thStyle, width: 90 }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(w => (
+              <tr key={w.id} style={{ borderBottom: '1px solid var(--border)', opacity: w.active ? 1 : 0.55, background: w.active ? 'transparent' : 'var(--bg-white)' }}>
+                <td style={tdStyle}>
+                  <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>{w.email}</div>
+                </td>
+                <td style={tdStyle}>
+                  <div style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{w.note || '—'}</div>
+                </td>
+                <td style={tdStyle}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13, color: 'var(--text-secondary)' }}>
+                    <input type="checkbox" checked={w.active} onChange={() => toggleActive(w)} />
+                    {w.active ? 'Active' : 'Disabled'}
+                  </label>
+                </td>
+                <td style={{ ...tdStyle, fontSize: 13, color: 'var(--text-secondary)' }}>{new Date(w.created_at).toLocaleDateString('en-US')}</td>
+                <td style={tdStyle}>
+                  <button onClick={() => remove(w.id)} className="btn-danger btn-sm">Remove</button>
+                </td>
+              </tr>
+            ))}
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={5} style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: 48 }}>
+                  {entries.length === 0 ? 'No whitelist entries yet — add emails to let people sign in.' : 'No matches found'}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       {showModal && (
