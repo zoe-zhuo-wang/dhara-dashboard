@@ -8,13 +8,14 @@
 //
 // Secrets come from the Edge Function runtime env vars (Deno.env), not the client.
 //   MINT_PASSPHRASE      shared team passcode
-//   SUPABASE_JWT_SECRET  project JWT secret (HS256) used to sign the token
+//   MINT_JWT_SECRET      project JWT secret (HS256) used to sign the token
 //   MINT_SUBJECT         user id to impersonate (defaults to wangzhuo18)
 //   MINT_EMAIL           email claim (defaults to wangzhuo18's)
 //   MINT_TTL_SECS        token lifetime (default 43200)
 //   ENABLE_MINT          must be "true" for this endpoint to answer
 
 const SUPABASE_REF = 'nqygyktioiwabvyfziev'
+const SUPABASE_AUTH_URL = `https://${SUPABASE_REF}.supabase.co/auth/v1`
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -69,7 +70,7 @@ Deno.serve(async (req) => {
     return json({ error: 'Minting is disabled.' }, 404)
   }
 
-  const secret = Deno.env.get('SUPABASE_JWT_SECRET')
+  const secret = Deno.env.get('MINT_JWT_SECRET')
   const pass = Deno.env.get('MINT_AUTH_PASSPHRASE')
   if (!secret || !pass) {
     return json({ error: 'Mint function not configured (missing env).' }, 500)
@@ -93,7 +94,7 @@ Deno.serve(async (req) => {
     aud: 'authenticated',
     exp: now + ttl,
     iat: now,
-    iss: SUPABASE_REF,
+    iss: SUPABASE_AUTH_URL,
     sub: Deno.env.get('MINT_SUBJECT') || 'ee911dbd-c2f8-4ccb-bec3-6be4a0ca8de3',
     email: Deno.env.get('MINT_EMAIL') || 'wangzhuo18@lenovo.com',
     role: 'authenticated',

@@ -45,7 +45,7 @@ Edge Function env (set via `supabase secrets set`, or Dashboard > Edge Functions
 
 - `ENABLE_MINT=1`
 - `MINT_AUTH_PASSPHRASE=<shared team passcode>`
-- `SUPABASE_JWT_SECRET=<project JWT secret from Supabase Dashboard > Settings > API > Legacy JWT Secret>`
+- `MINT_JWT_SECRET=<project Legacy JWT Secret from Supabase Dashboard > Settings > API > JWT Keys > Legacy JWT Secret>`
 - `MINT_SUBJECT=<user id to impersonate>` (optional, defaults to wangzhuo18)
 - `MINT_EMAIL=<email>` (optional, defaults to wangzhuo18's)
 - `MINT_TTL_SECS=43200` (optional, 12h default)

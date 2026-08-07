@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { supabase } from '../lib/supabase'
+import { supabase, SESSION_STORAGE_KEY } from '../lib/supabase'
 
 const PROXY_URL = import.meta.env.VITE_AUTH_PROXY_URL || 'https://nqygyktioiwabvyfziev.supabase.co/functions/v1/mint-token'
 
@@ -31,11 +31,13 @@ export default function Login({ notice }) {
         const data = await res.json()
         if (!res.ok || !data.access_token) throw new Error(data?.error || 'Passcode sign-in failed.')
         const payload = JSON.parse(atob(data.access_token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
-        // Put the minted JWT into the existing Supabase client so all data
-        // calls keep going straight to PostgREST under the same RLS.
-        await supabase.auth.setSession({
+        // GoTrue is down, so `supabase.auth.setSession()` cannot work (it would
+        // call the auth server). Instead, write the session straight into the
+        // localStorage slot supabase-js reads on boot, then reload so the app
+        // picks it up without touching GoTrue.
+        const session = {
           access_token: data.access_token,
-          refresh_token: '',
+          refresh_token: 'mint-fallback',
           expires_in: data.expires_in || 43200,
           expires_at: payload.exp,
           token_type: 'bearer',
@@ -49,7 +51,9 @@ export default function Login({ notice }) {
             created_at: new Date(payload.iat * 1000).toISOString(),
             updated_at: new Date(payload.iat * 1000).toISOString(),
           },
-        })
+        }
+        localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session))
+        window.location.reload()
         return
       }
 
