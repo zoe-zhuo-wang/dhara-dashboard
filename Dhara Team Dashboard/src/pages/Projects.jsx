@@ -7,21 +7,21 @@ import { demoProjects, demoPeople, demoRead } from '../lib/demoData'
 
 const ALL_COLUMNS = [
   { key: 'name', label: 'Project Name', default: true, width: 200 },
+  { key: 'description', label: 'Description', default: true, width: 280 },
   { key: 'biz_group', label: 'Biz Group', default: true, width: 120, options: BIZ_GROUP_OPTIONS },
   { key: 'biz_focal', label: 'Biz Focal', default: true, width: 140 },
   { key: 'dt_focal_id', label: 'DT Focal', default: true, width: 200 },
   { key: 'it_focal', label: 'IT Focal', default: true, width: 140 },
-  { key: 'funding_type', label: 'Funding Type', default: true, width: 140, options: FUNDING_OPTIONS },
   { key: 'current_phase', label: 'Current Phase', default: true, width: 140, options: PHASE_OPTIONS },
-  { key: 'overall_status', label: 'Overall Status', default: true, width: 140, options: OVERALL_STATUS_OPTIONS },
-  { key: 'budget_status', label: 'Budget Status', default: true, width: 140, options: BUDGET_STATUS_OPTIONS },
+  { key: 'funding_type', label: 'Funding Type', default: true, width: 140, options: FUNDING_OPTIONS },
   { key: 'budget', label: 'Budget', default: true, width: 120 },
-  { key: 'description', label: 'Description', default: false, width: 280 },
+  { key: 'budget_status', label: 'Budget Status', default: false, width: 140, options: BUDGET_STATUS_OPTIONS },
+  { key: 'biz_benefit', label: 'Biz Benefit', default: false, width: 280 },
   { key: 'start_date', label: 'Start Date', default: false, width: 120 },
   { key: 'end_date', label: 'End Date', default: false, width: 120 },
-  { key: 'key_updates', label: 'Key Updates', default: true, width: 320 },
-  { key: 'biz_benefit', label: 'Biz Benefit', default: false, width: 280 },
   { key: 'vetra_adopted', label: 'Vetra Adopted', default: false, width: 120, options: VETRA_OPTIONS },
+  { key: 'overall_status', label: 'Overall Status', default: false, width: 140, options: OVERALL_STATUS_OPTIONS },
+  { key: 'key_updates', label: 'Key Updates', default: false, width: 320 },
 ]
 const DEFAULT_VISIBLE = ALL_COLUMNS.filter(c => c.default).map(c => c.key)
 
